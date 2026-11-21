@@ -238,7 +238,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and [docs/USAGE.md](docs/US
 
 Designed, implemented and released by two authors:
 
-- **like-an-old-dog** — [@like-an-old-dog](https://github.com/like-an-old-dog) (repository maintenance and releases)
+- **like-an-old-dog** — [@like-an-old-dog](https://github.com/like-an-old-dog)
 - **2222223233** — [@2222223233](https://github.com/2222223233)
 
 ## Copyright and third parties

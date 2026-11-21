@@ -260,7 +260,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 本项目由两位作者共同设计、实现与发布：
 
-- **like-an-old-dog** — [@like-an-old-dog](https://github.com/like-an-old-dog)（仓库维护与发布）
+- **like-an-old-dog** — [@like-an-old-dog](https://github.com/like-an-old-dog)
 - **2222223233** — [@2222223233](https://github.com/2222223233)
 
 ## 版权与第三方组件
