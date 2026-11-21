@@ -4,19 +4,19 @@
 
 **把同一个局域网里几台设备的声音，汇到一副耳机里。**
 
-Windows · Android · iPhone 网页试听 —— 48 kHz / 16 bit 立体声，低延迟多路混音
+Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时收发，48 kHz / 16 bit 立体声
 
-[![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?include_prereleases&style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-2f6f5e?style=flat-square)](#平台支持)
-[![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-2f6f5e?style=flat-square)](#音质延迟与带宽)
-[![Status](https://img.shields.io/badge/status-0.3%20preview-d9832c?style=flat-square)](#已知限制)
+[![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-1c1f43?style=flat-square)](#平台支持)
+[![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-1c1f43?style=flat-square)](#音质延迟与带宽)
+[![Status](https://img.shields.io/badge/status-1.1%20release-4c43c1?style=flat-square)](#已知限制)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-8b3a3a?style=flat-square)](NOTICE.md)
 
 [快速开始](#快速开始) · [功能](#能做什么) · [工作原理](#工作原理) · [构建](#从源码构建) · [已知限制](#已知限制) · [English](README.en.md)
 
 </div>
 
-![声汇 Windows 客户端](docs/images/windows-main.png)
+![声汇 Windows 客户端](docs/images/windows-session.png)
 
 ---
 
@@ -24,14 +24,14 @@ Windows · Android · iPhone 网页试听 —— 48 kHz / 16 bit 立体声，低
 
 电脑上的音乐、手机里的视频、平板上的游戏——通常它们各自只从自己的扬声器出声。**声汇 SoundMesh 把这些来自不同设备的声音收进同一条局域网音频链路，在一台设备上合成一路混音，送进你正戴着的那副耳机。**
 
-每台设备只做两件事：**共享自己的声音**，或者**接收并混合别人的声音**。没有账号、没有云端、没有中转服务器，音频帧只在局域网内从发送端直连到接收端。
+1.1 起每台设备只有一种模式：**「开始融合」= 同时把本机声音发出去、同时接收别人的声音**。之前版本要在「共享 / 监听」之间切换，现在两端点同一个按钮，配对一次就双向通了。
 
-- 🎧 **一副耳机听所有设备**——电脑接耳机，手机声音也进耳机；手机接耳机，电脑声音也进手机。
-- 🎚️ **逐路调音**——每台来源独立音量与静音，外加一个总音量。
-- 🔁 **断线自动回到原位**——设备短暂掉线后保留通道和音量，按 1、2、4、8 秒重试。
+- 🎧 **一副耳机听所有设备**——耳机在电脑上，手机声音也进电脑；耳机在手机上，电脑声音也进手机。
+- 🎚️ **四层音量**——每台远端设备、其他设备合计、本机发送、本机应用（Windows 还能按比例压低其他应用的音量）。
+- 📱 **系统媒体卡片联动**——Android 下拉通知栏拖动媒体进度条就是远端混音总音量，轻点展开完整调音面板。
 - 🌐 **iPhone 免安装试听**——Safari 扫码即听，无需 IPA、无需开发者签名。
 
-> 项目仍在 **0.3 预览阶段**：核心链路可用，但"真实 Wi-Fi 抖动、蓝牙耳机延迟、实体 iPhone 上 Safari 播放"这类只有实机才能回答的问题还没有全部验证。详见[已知限制](#已知限制)与 [测试结果](docs/TEST-RESULTS-0.3.txt)。
+> 没有账号、没有云端、没有中转服务器：音频帧只在局域网内从发送端直连到接收端。链路是**明文**的，请只在可信网络使用。
 
 ---
 
@@ -39,21 +39,21 @@ Windows · Android · iPhone 网页试听 —— 48 kHz / 16 bit 立体声，低
 
 | 场景 | 怎么做 | 结果 |
 | --- | --- | --- |
-| **耳机在电脑上** | 电脑开「耳机监听」，手机点「共享本机声音」 | 手机声音进入电脑耳机，电脑自己的声音不受影响 |
-| **耳机在手机上** | 手机开接收，电脑开共享 | 电脑声音进入手机耳机 |
-| **大家一起看片** | 任意台设备作为接收端，其余设备共享 | 一路混音同时输出，逐路调音量 |
-| **两边都要听** | 两台设备都进入「双向空间 Beta」并互相连接 | A 的声音到 B、B 的声音到 A，两端各自混音 |
-| **只想快速听一下 iPhone** | 电脑「共享声音」→「iPhone 浏览器监听」→ 扫码 | Safari 里直接播放，还能加别的设备一起混 |
+| **耳机在电脑上** | 两台设备都点「开始融合」并配对，在电脑点「把监听切到本机」 | 手机声音进电脑耳机，电脑自己的声音照常播放 |
+| **耳机在手机上** | 同上，只是把监听切到手机 | 电脑声音进手机耳机 |
+| **大家一起看片** | 任意台设备接管监听，其余设备同样「开始融合」 | 一路混音同时输出，逐路调音量 |
+| **三台以上** | 每两台之间连接一次（A–B、A–C、B–C） | 每台都能独立混合其余设备的来源 |
+| **只想快速听一下 iPhone** | 电脑「设备连接」→「邀请 iPhone 网页监听」→ 扫码 | Safari 里直接播放，还能加别的设备一起混 |
 
 ### 界面
 
-| 接收与混音 | 共享本机声音 |
+| 混音台 | 设备连接 |
 | --- | --- |
-| ![耳机监听](docs/images/tab-listen.png) | ![共享声音](docs/images/tab-share.png) |
+| ![混音台](docs/images/windows-session.png) | ![设备连接](docs/images/windows-devices.png) |
 
-| 双向空间 Beta | 音量小窗（`Ctrl+Alt+M`） |
+| 输出设置 | 音量小窗（`Ctrl+Alt+M`） |
 | --- | --- |
-| ![双向空间](docs/images/tab-duplex-beta.png) | ![音量小窗](docs/images/quick-mixer.png) |
+| ![输出设置](docs/images/windows-output.png) | ![音量小窗](docs/images/quick-mixer.png) |
 
 | iPhone 浏览器监听（Safari 中打开） |
 | --- |
@@ -61,11 +61,11 @@ Windows · Android · iPhone 网页试听 —— 48 kHz / 16 bit 立体声，低
 
 ### 三个值得单独说的点
 
-**耳机监听 / 本机播放是分开的。** 接收端只接管"来自其他设备"的那部分声音，本机其他应用仍由系统直接播放。你不需要为了听远端的声音，把自己电脑的声音绕一圈再回来。
+**监听与本地播放是分开的。** 接管监听只影响"来自其他设备"的那部分声音，本机其他应用仍由系统直接播放。你不用为了听远端的声音，把自己的声音绕一圈再回来。
 
-**发送端不会把自己的混音送回网络。** 双向模式下，Windows 用 WASAPI 进程回环采集并排除自身进程树（`SoundMeshCapture.exe` 独立进程，`PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE`），Android 用 `AudioPlaybackCapture` 的 UID 排除。否则 A 听到的 B 会被再次编码发回 B，形成回声。
+**发送端不会把自己的混音送回去。** Windows 用独立的 `SoundMeshCapture.exe` 做 WASAPI 进程回环，并排除声汇自身的进程树；Android 用 `AudioPlaybackCapture` 的 UID 排除。否则 A 听到的 B 会被再次编码发回 B，形成回声。
 
-**缓冲是自适应的。** 起始缓冲按档位设置（灵敏 25 ms / 均衡 70 ms / 稳定 90 ms），一旦断流临时抬高，稳定一段时间后再逐步回落，上限 160 ms。积压时丢弃旧样本而不是越堆越慢——延迟不会随时间增长，代价是极端抖动下会有一次轻微断音。
+**缓冲是自适应的。** 起始缓冲按档位设置（灵敏 25 ms / 均衡 70 ms / 稳定 90 ms），一旦断流临时抬高，稳定后再回落，上限 160 ms。积压时丢弃旧样本而不是越堆越慢——延迟不会随时间增长，代价是极端抖动下会有一次轻微断音。
 
 ---
 
@@ -73,13 +73,14 @@ Windows · Android · iPhone 网页试听 —— 48 kHz / 16 bit 立体声，低
 
 | 平台 | 状态 | 采集方式 | 系统要求 |
 | --- | --- | --- | --- |
-| **Windows x64** | ✅ 可安装使用 | WASAPI 进程回环（独立 native 进程） | Windows 10 / 11 x64 |
-| Windows「静音本机输出」与双向模式 | ✅ | 进程级回环排除 | Windows build 20348+（通常 Win11） |
-| **Android** | ✅ 可安装使用 | `MediaProjection` + `AudioPlaybackCapture` | Android 10（API 29）及以上 |
+| **Windows x64** | ✅ 正式版 | WASAPI 进程回环（独立 native 进程） | Windows 10 / 11 x64 |
+| **Android** | ✅ 正式版 | `MediaProjection` + `AudioPlaybackCapture` | Android 10（API 29）及以上 |
 | **iPhone 网页监听** | ⚠️ 桌面 Chromium 已测 | 由电脑端桥接转发 | iOS 16+ Safari，同一局域网 |
-| **iOS 原生 App** | 🧪 仅有源码工程 | ReplayKit Broadcast Upload | iOS 16+，需 Xcode 自行签名 |
+| **iOS 原生 App** | 🧪 上一版开发稿 | ReplayKit Broadcast Upload | iOS 16+，需 Xcode 自行签名 |
 
-**版本互连规则**：0.2 与 0.3 的音频协议兼容，可以互相连接；0.1 使用单声道协议，必须与同为 0.1 的设备配对。同一设备上运行的两个版本请当作两套独立安装。
+- 「开始融合」在 Windows 上使用进程隔离采集，需要 **build 20348+（通常 Win11）**；低版本会在启动时给出提示。
+- Android 与 1.0 使用相同签名，可覆盖安装；覆盖 0.3 也可。
+- 协议与 0.2/0.3 一致，可与旧版本互连；0.1 是单声道协议，不兼容。
 
 ---
 
@@ -88,27 +89,45 @@ Windows · Android · iPhone 网页试听 —— 48 kHz / 16 bit 立体声，低
 ### 你需要
 
 - 两台以上设备接在**同一个** Wi-Fi / 有线局域网，且彼此能互相访问（访客 Wi-Fi、AP 隔离、企业网络常见地不行）。
-- Windows 上：解压整个 `SoundMesh-Windows-0.3.zip` 后，运行与 `SoundMeshCapture.exe` **同目录**的 `SoundMesh.exe`。两个文件缺一不可。
-- Android 上：安装 `SoundMesh-Android-0.3.apk`。沿用 0.2 的包名与签名，可直接覆盖安装。
+- Windows：解压整个 `SoundMesh-Windows-1.1.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` **留在同一目录**。
+- Android：安装 `SoundMesh-Android-1.1.apk`。
 
 ### 三步连起来
 
-1. **一边接收**：在耳机所接的设备上打开「耳机监听」（电脑）或「接收」（手机）。
-2. **另一边共享**：在另一台设备点「共享本机声音」，同意系统的采集授权。
-3. **配对一次**：在接收端的「附近设备」里选中发送端；首次输入对方界面上的 **8 位配对码**（或扫二维码）。同一安装之后会自动记住。
+1. **每台都点「开始融合」**（Android 按系统提示授权共享应用音频）。
+2. **配对一次**：在任一端选「附近设备」，或扫对方的配对二维码。一对设备配对一次，之后就同时收发了。
+3. **耳机接哪台，就在哪台点「把监听切到本机」**。
 
-之后只需要第 1、2 步。
+之后只需要第 1 步和第 3 步。
 
 ### 如果连不上
 
 | 现象 | 先检查 |
 | --- | --- |
 | 「附近设备」一直是空的 | 两端是否真的在同一子网；Windows 防火墙是否放行 UDP 49633 与 TCP 49632 |
-| 列表里显示了地址，却连不上 | 电脑有多块网卡（无线/有线/VPN/虚拟网卡）时，尝试用「手动配对」直接填发送端的局域网 IP |
-| 手机是 `192.168.3.7`，电脑却显示 `192.168.56.1` | 电脑连错网卡了，多半是 VPN 或 VirtualBox 虚拟网卡。共享页可以手动改选地址 |
-| 时断时续 | 把缓冲档位切到「稳定 · 90 ms」，并远离 2.4 GHz 拥塞信道 |
+| 列表里有地址，却连不上 | 电脑有多块网卡（无线/有线/VPN/虚拟网卡）时，用「手动配对」直接填对端的局域网 IP |
+| 手机是 `192.168.3.7`，电脑却显示 `192.168.56.1` | 电脑连错网卡了，多半是 VPN 或虚拟网卡。设备连接页可以手动改选地址 |
+| 时断时续 | 把缓冲切到「稳定 · 90 ms」，并远离 2.4 GHz 拥塞信道 |
+| 只有一边有声音 | 确认耳机所在设备点了「把监听切到本机」，且该页的「在本机监听」是勾选状态 |
 
-发现走 UDP 广播 49633，音频走 TCP 49632。链路是**明文局域网传输**，请只在可信网络使用。
+发现走 UDP 广播 49633，音频走 TCP 49632。请只在可信网络使用。
+
+---
+
+## 调音
+
+| 滑杆 | 作用 |
+| --- | --- |
+| 每台远端设备 | 该设备声音在当前监听端的音量，可单独静音 |
+| **其他设备合计** | 所有远端通道的总音量（Android 媒体卡片拖的就是它） |
+| **本机发送** | 本机发出去的音量，所有接收方都会听到变化 |
+| **本机应用**（仅 Windows） | 按比例压低默认输出上**其他应用**的音量，跳过声汇自己的会话；结束融合时恢复 |
+| **本机 · 系统媒体输出**（仅 Android） | 调节当前音频路由的系统媒体音量，也会影响耳机里声汇的声音 |
+
+- **Windows**：`Ctrl+Alt+M` 呼出音量小窗，下拉列表可选「远端混音总音量 / 本机应用 / 本机 · 发给其他设备 / 某台设备」，`Esc` 收起。
+- **Android**：下拉展开系统媒体卡片，拖动进度条调远端混音总音量；轻点卡片打开「声汇音量」面板，可分别拖本机发送、系统媒体输出、远端总音量和各设备。不同厂商的紧凑布局可能隐藏进度条，Android 13+ 需允许通知。
+
+> Android 无法只静音其他应用的本地扬声器，所以用「本机 · 系统媒体输出」做折中：它会连声汇自己的播放一起调小。想保持采集电平又不想外放，把发送端媒体路由到闲置的有线耳机或 USB 声卡更稳。
 
 ---
 
@@ -128,30 +147,23 @@ Windows · Android · iPhone 网页试听 —— 48 kHz / 16 bit 立体声，低
 
 ---
 
-## 快捷调音
-
-- **Android**：接收或双向模式下，通知栏会出现 −5% / 静音·恢复 / +5% 三个按钮，与应用内总音量同步（仅作用于声汇混音）。Android 13+ 需允许通知。
-- **Windows**：运行期间按 `Ctrl+Alt+M` 呼出音量小窗，`Esc` 收起；主窗口也有「音量小窗」按钮。
-
----
-
 ## 工作原理
 
 ```mermaid
 flowchart LR
-  subgraph 发送端 A
+  subgraph 设备 A（融合中）
     A1[系统声音] --> A2[采集<br/>WASAPI 进程回环 / MediaProjection]
     A2 --> A3[48 kHz · 16 bit · 立体声<br/>10 ms 分帧]
     A3 --> A4[(TCP 49632)]
   end
   subgraph 局域网
-    A4 --> N[UDP 49633 发现<br/>TCP 49632 音频]
+    A4 <--> N[UDP 49633 发现<br/>TCP 49632 音频]
   end
-  subgraph 接收端 B
-    N --> B1[自适应缓冲<br/>AudioRing]
-    B1 --> B2[逐路增益 · 静音<br/>MixBus 混音]
-    B2 --> B3[总音量]
-    B3 --> B4[本机输出 / 耳机]
+  subgraph 设备 B（融合中）
+    N <--> B1[自适应缓冲<br/>AudioRing]
+    B1 --> B2[逐路增益 · 静音]
+    B2 --> B3[其他设备合计]
+    B3 --> B4[耳机输出]
     N -.->|TCP 49634 HTTP + WebSocket| W[iPhone Safari<br/>Web Audio]
   end
 ```
@@ -162,9 +174,10 @@ flowchart LR
 | --- | --- | --- |
 | 设备发现 | UDP 49633 | 广播 `SOUNDMESH FIND 2`，应答 `SM2\|<id>\|<name>` |
 | 音频传输 | TCP 49632 | 明文握手 `SOUNDMESH2 <pin> [<reversePin>]` → `OK 48000 2`，随后为定长 PCM 帧 |
+| 监听接管 | TCP 49632 | `SM2-FOCUS <pin>` → `OK FOCUS`，通知对端暂停监听 |
 | iPhone 桥接 | TCP 49634 | HTTP 静态资源 + 带令牌的 WebSocket，令牌只存在于 URL fragment |
 
-配对码是发送端本地生成并持久化的 8 位数字，保存在 Windows 注册表 `HKCU\Software\SoundMesh\Pairing`（Android 等价存于私有偏好）。二维码内容是 `soundmesh://pair/<id>/<ip>/<pin>/<token>` 形式，扫描不经过任何第三方服务。
+配对码是设备本地生成并持久化的 8 位数字（Windows 存于 `HKCU\Software\SoundMesh\Pairing`）。二维码内容是 `soundmesh://pair/<ip>/<pin>/<id>`，扫描不经过任何第三方服务。
 
 ---
 
@@ -188,41 +201,40 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
   -BuildTools 'C:/Android/sdk/build-tools/35.0.0'
 ```
 
-**测试**：
+**测试**：`./src/tests/run.ps1 -CaptureSmoke`
 
-```powershell
-./src/tests/run.ps1 -CaptureSmoke
-```
+**图标与插图**：`src/brand` 里有品牌素材与 `make_assets.py`，用于生成 Windows 多分辨率图标、Android 自适应启动器与通知图标。
 
-**iOS**：在 Mac 上用 XcodeGen 打开 `src/ios`，详见 [src/ios/README.md](src/ios/README.md)。仓库里不含 IPA——Windows 环境无法生成、签名或验证 iOS 包。
+**iOS**：在 Mac 上用 XcodeGen 打开 `src/ios`，详见 [src/ios/README.md](src/ios/README.md)。仓库里不含 IPA。
 
-> 构建脚本会把测试签名密钥留在本机 `build/` 目录。换一台机器或换一个目录重新构建会得到不同密钥，**无法覆盖安装**已有版本的 APK。
+> Android 构建脚本会把测试签名密钥留在本机 `build/` 目录。换目录重新构建会得到不同密钥，**无法覆盖安装**已有版本。
 
 ---
 
 ## 测试与验证
 
-已通过的自动化与实机检查（日志见 [docs/TEST-RESULTS-0.3.txt](docs/TEST-RESULTS-0.3.txt)）：
+日志见 [docs/TEST-RESULTS-1.1.txt](docs/TEST-RESULTS-1.1.txt)。要点：
 
-- 21 项 C# 检查：预缓冲、PCM 转换、积压上限、陈旧样本丢弃、欠载静音、逐路与总增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
-- 跨语言互通：Android Java 编解码器 ↔ C# 发送端/接收端，分片流与断连检测。
-- Android API 32 模拟器实测：签名 APK 覆盖安装、通知栏四个音量按钮触发真实 `PendingIntent`、媒体播放采集、Beta 反向链路（ADB 端口转发）。模拟测试音为左 500 Hz / 右 900 Hz，8 秒采集的 800 个音频块均检测到正确的双声道频率。
-- Windows：进程排除采集连续 30 帧、WASAPI → 本地 TCP 接收端、热键注册与 `WM_HOTKEY` 派发、主界面滑杆与小窗双向同步。
-- 抖动对比（14 s 规律性 50–90 ms 卡顿）：0.2 欠载 2 次 / 缺失 60 ms；0.3 欠载 1 次 / 缺失 50 ms。
-- 网页链路：真实 Kestrel 桥接接收合成立体声 PCM，经 WebSocket 与 Web Audio analyser 播放，逐声道静音与暂停均验证。
+- **23 项 C# 检查通过**：预缓冲、PCM 有符号转换、积压上限、陈旧样本丢弃、欠载静音、逐路/总/发送增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
+- 新增的**发送侧音量**在 Java 与 C# 两侧都验证了：只影响出站信号，不改变远端混音；能把出站压到静音。
+- **跨语言互通**：Android Java 编解码器 ↔ C# 发送端/接收端，分片流、断连检测、强制重连后混音设置与双向提议都保留。
+- **Android 12L 模拟器**：签名 APK 覆盖安装到 1.0 成功；系统媒体卡片实际拖动把混音从 80 改到 37 并由媒体会话上报；轻点卡片打开音量面板；横屏紧凑布局会隐藏系统进度条。
+- **Windows**：发布版 x64 二进制带多分辨率图标；热键注册与 `WM_HOTKEY` 派发正常，主窗口与小窗滑杆双向同步；进程排除采集连续 30 帧；WASAPI → 本地 TCP 接收端。
+- **互通**：Windows 音频引擎与 1.1 Android 客户端在设备页配对，双向交换 500 帧并确认监听接管。
+
+旧版日志保留在 [docs/TEST-RESULTS-0.3.txt](docs/TEST-RESULTS-0.3.txt)。
 
 ---
 
 ## 已知限制
 
-**这是 0.3 预览版，请按"能用但还没打磨完"来对待。**
+**1.1 是正式版，但仍有明确的边界。**
 
-- ⚠️ **iPhone 只验证到链路层**：桌面 Chromium 上播放链路通过，但实体 iPhone Safari 的实际播放、后台行为、蓝牙延迟尚未验证。Windows 的 WebKit 测试运行时缺少 `Web Audio`，所以不能替代真机结论。
-- ⚠️ **双向空间是 Beta**：三台实体设备、蓝牙多点耳机接管、真实声学延迟都还没有完整实测。设备间也**不支持直接蓝牙音频传输**——蓝牙耳机只能作为系统输出。
-- ⚠️ **iOS 原生 App 只有源码**：工程结构与 entitlement 已检查，但没有 Apple SDK、Xcode 签名，也没有装机测试。
-- ⚠️ **测试场景不含真实网络抖动**：没有实体 Wi-Fi 抖动、相机扫码、耳机听感与蓝牙延迟测量。
+- ⚠️ **iPhone 只验证到链路层**：网页播放链路在桌面 Chromium 上通过，实体 iPhone Safari 的实际播放、后台行为、蓝牙延迟尚未验证。
+- ⚠️ **iOS 原生版是上一版开发稿**：只有源码与工程描述，没有编译、签名或装机测试。
+- ⚠️ **未测量项**：各厂商 OEM 通知栏布局、真实声学输出电平、蓝牙多点耳机仲裁、Wi-Fi 抖动与端到端延迟。
 - ⚠️ **明文传输**：配对码与音频都在局域网明文传输，无加密、无前向保密。请在可信网络使用。
-- ⚠️ **Android 无法可靠静音其他应用的扬声器**：普通应用做不到"只静音其他应用的本地扬声器、同时保留完整采集音量"。工程上可行的办法是把发送端媒体路由到闲置的有线耳机或 USB 声卡。
+- ⚠️ **Android 无法只静音其他应用的扬声器**，只能通过系统媒体音量折中（会连同声汇的播放一起变小）。
 - Android 受保护的媒体内容与通话声音受系统限制，无法采集。
 - 没有固定的并发路数上限，实际容量取决于网络与设备。
 
@@ -230,11 +242,11 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## 路线图
 
-- [ ] iPhone Safari 真机验证，并补齐 Web Audio 的自动播放策略处理
+- [ ] iPhone Safari 真机验证，补齐 Web Audio 自动播放策略
 - [ ] iOS 原生版：签名流程、TestFlight 分发、ReplayKit 采集验证
-- [ ] 双向空间从 Beta 转正：三设备拓扑与蓝牙多点耳机接管实测
-- [ ] 可选的链路加密（局域网内仍不依赖服务器）
-- [ ] 安装包体积优化（当前 Windows 单文件自包含 ≈ 189 MB）
+- [ ] 三设备拓扑与蓝牙多点耳机接管的实机测试
+- [ ] 可选的链路加密（仍然不依赖服务器）
+- [ ] 安装包体积优化（Windows 单文件自包含 ≈ 190 MB）
 
 ---
 
@@ -255,4 +267,6 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 本项目**保留所有权利**（All Rights Reserved），未采用开源许可证。源码公开用于阅读与评估，未经作者书面许可不得再分发或用于商业用途，详见 [NOTICE.md](NOTICE.md)。
 
-第三方组件及其许可证全文见 [THIRD-PARTY/](THIRD-PARTY/)：.NET 8 与 Windows Desktop Runtime（MIT）、NAudio 2.2.1（MIT）、ZXing.Net 0.16.11（Apache-2.0）、AndroidX/ZXing core（Apache-2.0）。
+界面布局参考了 Microsoft Fluent 2 的间距与分组、以及 Android Developers 的 Material 卡片用法；**图标与会话声波插图为声汇原创**。
+
+第三方组件及许可证全文见 [THIRD-PARTY/](THIRD-PARTY/)：.NET 8 与 Windows Desktop Runtime（MIT）、NAudio 2.2.1（MIT）、ZXing.Net 0.16.11（Apache-2.0）、ZXing core（Apache-2.0）。

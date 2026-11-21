@@ -4,19 +4,19 @@
 
 **One pair of headphones. Every device in the room.**
 
-Windows · Android · iPhone (web preview) — 48 kHz / 16-bit stereo, low-latency multi-source mixing over your LAN.
+Windows · Android · iPhone (web preview) — one *Start fusion* both sends and receives, 48 kHz / 16-bit stereo over your LAN.
 
-[![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?include_prereleases&style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-2f6f5e?style=flat-square)](#platform-support)
-[![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-2f6f5e?style=flat-square)](#audio-latency-and-bandwidth)
-[![Status](https://img.shields.io/badge/status-0.3%20preview-d9832c?style=flat-square)](#known-limitations)
+[![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-1c1f43?style=flat-square)](#platform-support)
+[![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-1c1f43?style=flat-square)](#audio-latency-and-bandwidth)
+[![Status](https://img.shields.io/badge/status-1.1%20release-4c43c1?style=flat-square)](#known-limitations)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-8b3a3a?style=flat-square)](NOTICE.md)
 
 [中文](README.md) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Build](#build-from-source)
 
 </div>
 
-![SoundMesh on Windows](docs/images/windows-main.png)
+![SoundMesh on Windows](docs/images/windows-session.png)
 
 ---
 
@@ -24,14 +24,14 @@ Windows · Android · iPhone (web preview) — 48 kHz / 16-bit stereo, low-laten
 
 Your laptop plays music, your phone plays a video, your tablet plays a game — each one only through its own speaker. **SoundMesh captures the system audio of those devices, streams it across your local network, and mixes everything into one output on the device your headphones are plugged into.**
 
-Every device only does one of two things: **share its own audio**, or **receive and mix other devices' audio**. No account, no cloud, no relay server — audio frames travel directly from sender to receiver inside the LAN.
+Since 1.1 there is only one mode: **Start fusion sends this device's audio and receives everyone else's at the same time.** Earlier versions made you choose between sharing and listening; now both ends press the same button and a single pairing connects both directions.
 
 - 🎧 **All devices in one headphone** — headphones on the PC, the phone's audio joins them; headphones on the phone, the PC's audio joins them.
-- 🎚️ **Per-source control** — independent volume and mute for each source, plus a master fader.
-- 🔁 **Reconnects back into place** — channels and volumes survive short drops; retries back off 1, 2, 4, 8 s.
-- 🌐 **iPhone with nothing to install** — open a QR code in Safari and listen. No IPA, no developer signing.
+- 🎚️ **Four gain layers** — per remote device, all remotes combined, what this device sends, and local applications (Windows can scale other apps' volume proportionally).
+- 📱 **System media card** — on Android, dragging the media progress bar in the notification shade *is* the remote mix volume; tapping it opens the full mixer panel.
+- 🌐 **iPhone with nothing to install** — scan a QR code in Safari and listen.
 
-> SoundMesh is at **0.3 preview**. The core path works, but questions that only physical hardware can answer — real Wi-Fi jitter, Bluetooth headset latency, actual Safari playback on an iPhone — are not fully verified yet. See [Known limitations](#known-limitations).
+> No account, no cloud, no relay: audio frames travel directly between devices inside the LAN. Traffic is **plaintext** — use it on networks you trust.
 
 ---
 
@@ -39,21 +39,21 @@ Every device only does one of two things: **share its own audio**, or **receive 
 
 | Situation | What to do | Result |
 | --- | --- | --- |
-| **Headphones on the PC** | PC enters *Headphone monitoring*; phone taps *Share this device's audio* | Phone audio goes to the PC's headphones; PC audio is untouched |
-| **Headphones on the phone** | Phone receives, PC shares | PC audio goes to the phone's headphones |
-| **Watch together** | Any device receives, the others share | One mixed output, per-source faders |
-| **Both directions** | Both devices enter *Duplex Space Beta* and pair | A→B and B→A simultaneously, each end mixes independently |
-| **Just try the iPhone** | PC: *Share audio* → *iPhone browser listening* → scan | Plays in Safari, and can mix in other devices |
+| **Headphones on the PC** | Both devices *Start fusion* and pair; on the PC tap *Move monitoring here* | Phone audio goes to the PC's headphones; PC audio keeps playing normally |
+| **Headphones on the phone** | Same, but move monitoring to the phone | PC audio goes to the phone's headphones |
+| **Watch together** | One device takes the monitor role, the others also *Start fusion* | One mixed output with per-source faders |
+| **Three or more** | Connect each pair once (A–B, A–C, B–C) | Every device mixes the sources it is connected to |
+| **Just try the iPhone** | PC → *Device connection* → *Invite iPhone browser listening* → scan | Plays in Safari, and can mix in other devices |
 
 ### Screens
 
-| Receive & mix | Share this device |
+| Mixer | Device connection |
 | --- | --- |
-| ![Headphone monitoring](docs/images/tab-listen.png) | ![Share audio](docs/images/tab-share.png) |
+| ![Mixer](docs/images/windows-session.png) | ![Devices](docs/images/windows-devices.png) |
 
-| Duplex Space Beta | Quick mixer (`Ctrl+Alt+M`) |
+| Output settings | Quick mixer (`Ctrl+Alt+M`) |
 | --- | --- |
-| ![Duplex](docs/images/tab-duplex-beta.png) | ![Quick mixer](docs/images/quick-mixer.png) |
+| ![Output](docs/images/windows-output.png) | ![Quick mixer](docs/images/quick-mixer.png) |
 
 | iPhone browser listening (opened in Safari) |
 | --- |
@@ -61,11 +61,11 @@ Every device only does one of two things: **share its own audio**, or **receive 
 
 ### Three things worth calling out
 
-**Monitoring and local playback are separate.** A receiver only takes over the audio that arrives from other devices; the rest of the machine's audio still goes straight to the system. You never route your own computer's sound out and back just to hear a remote device.
+**Monitoring is separate from local playback.** Taking over monitoring only affects the audio arriving from other devices; everything else still goes straight to the system output. You never route your own computer's sound out and back just to hear a remote device.
 
-**A sender never sends its own mix back out.** In duplex mode Windows captures with WASAPI process loopback from a separate `SoundMeshCapture.exe` process using `PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE`; Android uses `AudioPlaybackCapture` with UID exclusion. Without that, B's audio would be re-encoded and sent back to B — a feedback loop.
+**A sender never sends its own mix back out.** Windows captures with WASAPI process loopback from a separate `SoundMeshCapture.exe` process using `PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE`; Android uses `AudioPlaybackCapture` with UID exclusion. Without that, B's audio would be re-encoded and sent back to B — a feedback loop.
 
-**Buffering adapts.** The starting buffer depends on the profile (25 ms responsive / 70 ms balanced / 90 ms stable), grows when a stream underruns, and decays back once stable, capped at 160 ms. When a queue overgrows, old samples are dropped instead of letting latency creep up forever — the tradeoff is one audible skip under extreme jitter.
+**Buffering adapts.** The starting buffer depends on the profile (25 ms responsive / 70 ms balanced / 90 ms stable), grows when a stream underruns, and decays once stable, capped at 160 ms. When a queue overgrows, old samples are dropped instead of letting latency creep up — the tradeoff is one audible skip under extreme jitter.
 
 ---
 
@@ -73,13 +73,14 @@ Every device only does one of two things: **share its own audio**, or **receive 
 
 | Platform | Status | Capture | Requirement |
 | --- | --- | --- | --- |
-| **Windows x64** | ✅ installable | WASAPI process loopback (native helper) | Windows 10 / 11 x64 |
-| Windows *mute local output while sharing* & duplex | ✅ | process loopback exclusion | Windows build 20348+ (typically Win11) |
-| **Android** | ✅ installable | `MediaProjection` + `AudioPlaybackCapture` | Android 10 (API 29)+ |
+| **Windows x64** | ✅ release | WASAPI process loopback (native helper) | Windows 10 / 11 x64 |
+| **Android** | ✅ release | `MediaProjection` + `AudioPlaybackCapture` | Android 10 (API 29)+ |
 | **iPhone web listening** | ⚠️ verified on desktop Chromium | bridged from the PC | iOS 16+ Safari, same LAN |
-| **iOS native app** | 🧪 source project only | ReplayKit Broadcast Upload | iOS 16+, sign it yourself in Xcode |
+| **iOS native app** | 🧪 previous draft | ReplayKit Broadcast Upload | iOS 16+, sign it yourself in Xcode |
 
-**Interop**: 0.2 and 0.3 speak the same audio protocol and can connect to each other. 0.1 used mono and must pair with another 0.1. Treat two versions installed on one device as two separate installs.
+- *Start fusion* uses isolated capture on Windows and requires **build 20348+ (typically Win11)**; older builds are told so at startup.
+- The Android 1.1 APK keeps the 1.0 signature, so it installs over 1.0 — and over 0.3.
+- The protocol is unchanged since 0.2/0.3 and can talk to those versions; 0.1 was mono and is incompatible.
 
 ---
 
@@ -87,20 +88,41 @@ Every device only does one of two things: **share its own audio**, or **receive 
 
 You need two or more devices on **one** LAN that can reach each other (guest Wi-Fi, AP isolation and enterprise networks usually cannot).
 
-1. **Receive**: on the device with the headphones, open *Headphone monitoring* (PC) or *Receive* (Android).
-2. **Share**: on another device, tap *Share this device's audio* and grant the system capture prompt.
-3. **Pair once**: pick the sender under *Nearby devices*, enter its **8-digit pairing code** (or scan its QR code). The same installation remembers the pairing afterwards.
+**Windows**: unzip the whole `SoundMesh-Windows-1.1.zip`, run `Windows\SoundMesh.exe`, and keep `SoundMeshCapture.exe` **in the same folder**.
+**Android**: install `SoundMesh-Android-1.1.apk`.
 
-Windows: unzip the whole `SoundMesh-Windows-0.3.zip` and run `SoundMesh.exe` from the **same folder** as `SoundMeshCapture.exe`; both files are required. Android: install `SoundMesh-Android-0.3.apk`; it keeps the 0.2 package name and signature, so it installs over the previous version.
+1. **Press *Start fusion* on every device** (Android will ask for the audio-sharing permission).
+2. **Pair once**: pick the other device under *Nearby devices*, or scan its pairing QR code. One pairing covers both directions.
+3. **On the device with the headphones, tap *Move monitoring here*.**
+
+After that you only need steps 1 and 3.
 
 | Symptom | Check first |
 | --- | --- |
 | *Nearby devices* stays empty | Same subnet? Windows Firewall allowing UDP 49633 and TCP 49632? |
-| Address appears but connection fails | Multi-homed PC (Wi-Fi + Ethernet + VPN + virtual adapters): use manual pairing with the sender's LAN IP |
-| Phone is `192.168.3.7`, PC shows `192.168.56.1` | The PC is on the wrong adapter — usually a VPN or VirtualBox NIC. The share page lets you pick the address |
-| Constant dropouts | Switch the buffer profile to *Stable · 90 ms*, and move off congested 2.4 GHz channels |
+| Address appears but connection fails | Multi-homed PC (Wi-Fi + Ethernet + VPN + virtual adapters): use manual pairing with the peer's LAN IP |
+| Phone is `192.168.3.7`, PC shows `192.168.56.1` | The PC is on the wrong adapter — usually a VPN or VirtualBox NIC. *Device connection* lets you pick the address |
+| Constant dropouts | Switch the buffer to *Stable · 90 ms*, and move off congested 2.4 GHz channels |
+| Only one side has sound | Make sure the headphone device tapped *Move monitoring here* and *Monitor on this device* is checked |
 
-Discovery is UDP broadcast on 49633; audio is TCP 49632. **Traffic is plaintext on the LAN** — use it on networks you trust.
+Discovery is UDP broadcast on 49633; audio is TCP 49632. Traffic is plaintext — use it on networks you trust.
+
+---
+
+## Volume controls
+
+| Fader | Effect |
+| --- | --- |
+| Each remote device | That source's level at the current listener, with its own mute |
+| **All remotes** | Total gain of all remote channels (this is what the Android media card drags) |
+| **This device sends** | Outbound level; every receiver hears the change |
+| **Local applications** (Windows) | Proportionally lowers *other* apps on the default output, skipping SoundMesh's own session; restored when fusion ends |
+| **Local · system media output** (Android) | System music volume for the current route, which also affects SoundMesh's own playback |
+
+- **Windows**: `Ctrl+Alt+M` opens the quick mixer; the dropdown picks *remote mix / local applications / this device sends / a specific device*; `Esc` hides it.
+- **Android**: expand the system media card and drag its progress bar for the remote mix; tap the card for the *SoundMesh volume* panel with local outbound, system media output, remote mix and per-device rows. Some OEM compact layouts hide the progress bar; Android 13+ needs notification permission.
+
+> Android cannot mute other apps' local loudspeakers on its own, so *system media output* is the compromise — it lowers SoundMesh's playback as well. To keep capture level without speaker output, route the sender to an idle wired or USB audio device.
 
 ---
 
@@ -124,19 +146,19 @@ End-to-end latency = system capture + network + receive buffer + system playback
 
 ```mermaid
 flowchart LR
-  subgraph Sender A
+  subgraph Device A (fusing)
     A1[System audio] --> A2[Capture<br/>WASAPI loopback / MediaProjection]
     A2 --> A3[48 kHz · 16-bit · stereo<br/>10 ms framing]
     A3 --> A4[(TCP 49632)]
   end
   subgraph LAN
-    A4 --> N[UDP 49633 discovery<br/>TCP 49632 audio]
+    A4 <--> N[UDP 49633 discovery<br/>TCP 49632 audio]
   end
-  subgraph Receiver B
-    N --> B1[Adaptive buffer<br/>AudioRing]
-    B1 --> B2[Per-source gain · mute<br/>MixBus]
-    B2 --> B3[Master gain]
-    B3 --> B4[Local output / headphones]
+  subgraph Device B (fusing)
+    N <--> B1[Adaptive buffer<br/>AudioRing]
+    B1 --> B2[Per-source gain · mute]
+    B2 --> B3[All remotes]
+    B3 --> B4[Headphone output]
     N -.->|TCP 49634 HTTP + WebSocket| W[iPhone Safari<br/>Web Audio]
   end
 ```
@@ -145,9 +167,10 @@ flowchart LR
 | --- | --- | --- |
 | Discovery | UDP 49633 | broadcast `SOUNDMESH FIND 2`, reply `SM2\|<id>\|<name>` |
 | Audio | TCP 49632 | plaintext handshake `SOUNDMESH2 <pin> [<reversePin>]` → `OK 48000 2`, then fixed-size PCM frames |
+| Monitor handoff | TCP 49632 | `SM2-FOCUS <pin>` → `OK FOCUS`, asks the peer to pause monitoring |
 | iPhone bridge | TCP 49634 | HTTP static assets + token-authenticated WebSocket; the token lives only in the URL fragment |
 
-The pairing code is generated and stored locally by the sender (Windows: `HKCU\Software\SoundMesh\Pairing`). QR codes carry a `soundmesh://pair/...` URI and never touch a third-party service. Protocol details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The pairing code is generated and stored locally by each device (Windows: `HKCU\Software\SoundMesh\Pairing`). QR codes carry a `soundmesh://pair/...` URI and never touch a third-party service. Protocol details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -162,7 +185,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o Windows
 ```
 
-**Windows capture helper** (process loopback, needs the Windows 11 SDK): run `src\windows\native\build.cmd` from an *x64 Native Tools Command Prompt* and place the output next to the main executable.
+**Windows capture helper** (needs the Windows 11 SDK): run `src\windows\native\build.cmd` from an *x64 Native Tools Command Prompt* and place the output next to the main executable.
 
 **Android** (JDK 21 + SDK Platform 35 + Build Tools 35.0.0, no Gradle):
 
@@ -173,7 +196,9 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 **Tests**: `./src/tests/run.ps1 -CaptureSmoke`
 
-**iOS**: open `src/ios` with XcodeGen on a Mac — see [src/ios/README.md](src/ios/README.md). No IPA is included; a Windows host cannot build, sign or verify one.
+**Icons and artwork**: `src/brand` holds the brand assets and `make_assets.py`, which generates the Windows multi-resolution icon, the Android adaptive launcher and the notification icon.
+
+**iOS**: open `src/ios` with XcodeGen on a Mac — see [src/ios/README.md](src/ios/README.md). No IPA is included.
 
 > The Android build script keeps a test signing key in the local `build/` directory. Building in a fresh directory produces a different key that **cannot** update an already-signed install.
 
@@ -181,18 +206,26 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## Verification
 
-See [docs/TEST-RESULTS-0.3.txt](docs/TEST-RESULTS-0.3.txt). Highlights: 21 C# checks (pre-roll, PCM conversion, bounded backlog, stale-sample discard, underrun silence, gain/mute composition, 66-source headroom, oversized-handshake and truncated-frame rejection, wrong-pairing rejection); cross-language codec interop between Android Java and C#; a real signed APK installed over the previous version on an API 32 emulator with notification button `PendingIntent`s exercised; Windows process-excluding capture streaming 30 frames; jitter comparison (0.2: 2 underruns / 60 ms lost vs 0.3: 1 underrun / 50 ms lost over 14 s); a Kestrel + WebSocket + Web Audio playback path on desktop Chromium.
+See [docs/TEST-RESULTS-1.1.txt](docs/TEST-RESULTS-1.1.txt). Highlights:
+
+- **23 C# checks pass**, including the new outbound-gain checks: pre-roll, signed PCM conversion, bounded backlog, stale-sample discard, underrun silence, per-source/master/outbound gain composition, 66-source headroom, oversized-handshake and truncated-frame rejection, wrong-pairing rejection.
+- **Cross-language interop** between the Android Java codec and the C# sender/receiver, including fragmented streams, disconnect detection, and mix settings surviving a forced reconnect.
+- **Android 12L emulator**: the signed APK installed over 1.0; a real drag on the system media card moved the mix from 80 to 37 and was reported through the media session; tapping opened the volume panel; a landscape compact layout hid the system seek bar.
+- **Windows**: the published x64 binary carries the multi-resolution icon; hotkey registration and `WM_HOTKEY` dispatch work, main and quick-mixer sliders stay in sync; process-excluding capture streamed 30 frames; WASAPI → local TCP receiver.
+- **Interop**: the Windows audio engine paired with the 1.1 Android client, exchanged 500 frames both ways and acknowledged the monitor handoff.
+
+Older logs are kept in [docs/TEST-RESULTS-0.3.txt](docs/TEST-RESULTS-0.3.txt).
 
 ---
 
 ## Known limitations
 
-- ⚠️ **iPhone is verified at the link layer only.** Playback works under desktop Chromium, but real Safari on a physical iPhone, background behaviour and Bluetooth latency are untested. The Windows WebKit runtime lacked `Web Audio`, so it is not a substitute.
-- ⚠️ **Duplex Space is Beta.** Three physical devices, Bluetooth multipoint takeover and real acoustic latency have not been fully measured. Devices also **cannot send Bluetooth audio to each other** — a headset is only ever a system output.
-- ⚠️ **The native iOS app is source only.** No Apple SDK, no Xcode signing, no device test.
-- ⚠️ **Plaintext transport.** Pairing codes and audio are unencrypted on the LAN. No forward secrecy.
-- ⚠️ **Android cannot reliably mute other apps' speakers.** A normal app cannot silence other apps' local loudspeakers while keeping full capture level; routing the sender to an idle wired or USB audio device is the practical workaround.
-- Protected media and phone calls are restricted by the OS and cannot be captured.
+- ⚠️ **iPhone is verified at the link layer only** — the web path works under desktop Chromium, but real Safari on a physical iPhone, background behaviour and Bluetooth latency are untested.
+- ⚠️ **The native iOS app is a previous draft** — source only, never built, signed or installed on a device.
+- ⚠️ **Not measured**: OEM notification layouts, real acoustic output level, Bluetooth multipoint arbitration, Wi-Fi jitter and end-to-end latency.
+- ⚠️ **Plaintext transport** — pairing codes and audio are unencrypted on the LAN.
+- ⚠️ **Android cannot mute other apps' speakers** — it can only lower system media volume, which also lowers SoundMesh.
+- Protected media and phone calls cannot be captured.
 - No fixed stream-count limit; capacity depends on network and device.
 
 ---
@@ -211,5 +244,7 @@ Designed, implemented and released by two authors:
 ## Copyright and third parties
 
 **All rights reserved.** This is not an open-source licensed project: the source is public for reading and evaluation, but redistribution or commercial use requires written permission — see [NOTICE.md](NOTICE.md).
+
+The layout follows Microsoft Fluent 2 spacing and grouping and Android Developers' Material card usage; **the icons and session wave artwork are original to SoundMesh**.
 
 Bundled third-party components and their license texts are in [THIRD-PARTY/](THIRD-PARTY/): .NET 8 and Windows Desktop Runtime (MIT), NAudio 2.2.1 (MIT), ZXing.Net 0.16.11 (Apache-2.0), ZXing core (Apache-2.0).

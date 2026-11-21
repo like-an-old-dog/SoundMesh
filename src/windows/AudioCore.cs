@@ -230,6 +230,13 @@ sealed class DesktopCapture : WasapiCapture {
 
 public sealed class AudioSender : IDisposable
 {
+    public volatile int OutboundPercent=100;
+    internal static void ScalePcm(byte[] frame,int percent){
+        if(percent==100)return;
+        var samples=System.Runtime.InteropServices.MemoryMarshal.Cast<byte,short>(frame);
+        percent=Math.Clamp(percent,0,100);
+        for(int i=0;i<samples.Length;i++)samples[i]=(short)(samples[i]*percent/100);
+    }
     public Action? YieldRequested {get;set;}
     public Action<string,string>? ReverseRequested {get;set;}
     public string Code { get; init; } = RandomNumberGenerator.GetInt32(10000000, 100000000).ToString();
@@ -335,7 +342,7 @@ public sealed class AudioSender : IDisposable
                 double queuedMs=captureBuffer.BufferedDuration.TotalMilliseconds;
                 if(queuedMs >= 35)primed=true;
                 if(queuedMs < 10)primed=false;
-                if(primed)pcm.Read(frame,0,frame.Length);
+                if(primed){pcm.Read(frame,0,frame.Length);ScalePcm(frame,OutboundPercent);}
                 lock (clients) foreach (var queue in clients) queue.Writer.TryWrite(frame);
                 next += 10;
                 double wait = next - clock.Elapsed.TotalMilliseconds;

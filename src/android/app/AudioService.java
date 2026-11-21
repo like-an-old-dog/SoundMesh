@@ -30,7 +30,11 @@ public final class AudioService extends Service {
     private DatagramSocket discovery;
     private Lan lan;
     public volatile int prebufferMs=70;
-    private volatile boolean duplex;
+    private android.media.session.MediaSession mediaSession;
+    private VolumeProvider volumeProvider;
+    private final SourceGain localSource=new SourceGain();
+    public int localPercent(){return localSource.percent();}
+    public void setLocalPercent(int value){localSource.set(value);}
     private android.net.wifi.WifiManager.WifiLock wifiLock;
     public void setBuffer(int ms){prebufferMs=ms;for(Remote remote:sources)remote.ring.prebufferMs=ms;}
     private PowerManager.WakeLock wake;
@@ -41,39 +45,66 @@ public final class AudioService extends Service {
         NotificationManager nm=getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel("audio","声音传输",NotificationManager.IMPORTANCE_LOW));
     }
-    private String notificationText;
-    private boolean volumeActions;
-    private int rememberedPercent=80;
     private final Runnable refreshNotification=()->{
         if(running)getSystemService(NotificationManager.class).notify(1,notification());
     };
-    private Notification.Action action(String command,String title,int id,int icon){
-        Intent intent=new Intent(this,AudioService.class).setAction(command);
-        PendingIntent operation=PendingIntent.getService(this,id,intent,PendingIntent.FLAG_IMMUTABLE);
-        return new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(this,icon),title,operation).build();
-    }
     public void setVolume(int percent){
-        master=Math.max(0,Math.min(100,percent))/100f;
-        if(master>0)rememberedPercent=Math.round(master*100);
+        int level=Math.min(100,Math.max(0,percent));
+        master=level/100f;
+        if(volumeProvider!=null)volumeProvider.setCurrentVolume(level);
+        updateMediaLabel(level);
+        updateMediaPosition(level);
         main.removeCallbacks(refreshNotification);
-        main.postDelayed(refreshNotification,100);
+        main.postDelayed(refreshNotification,120);
+    }
+    // SystemUI supplies a draggable media seek bar for sessions with a duration and ACTION_SEEK_TO.
+    // Its 0..100-second range represents 0..100 percent and its position stays still between edits.
+    private void updateMediaLabel(int level){
+        if(mediaSession!=null)mediaSession.setMetadata(new MediaMetadata.Builder()
+            .putString(MediaMetadata.METADATA_KEY_TITLE,"远端混音音量  "+level+"%")
+            .putString(MediaMetadata.METADATA_KEY_ARTIST,"拖动调音 · 点开调节每台设备")
+            .putLong(MediaMetadata.METADATA_KEY_DURATION,100000L).build());
+    }
+    private void updateMediaPosition(int level){
+        if(mediaSession==null)return;
+        mediaSession.setPlaybackState(new android.media.session.PlaybackState.Builder()
+            .setActions(android.media.session.PlaybackState.ACTION_SEEK_TO)
+            .setState(android.media.session.PlaybackState.STATE_PLAYING,level*1000L,0f).build());
     }
     private Notification notification(){
-        PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE);
-        Notification.Builder builder=new Notification.Builder(this,"audio").setSmallIcon(android.R.drawable.ic_lock_silent_mode_off)
-            .setContentTitle(volumeActions?"声汇 · 混音音量 "+Math.round(master*100)+"%":"声汇 · 正在共享")
-            .setContentText(notificationText).setContentIntent(open).setOnlyAlertOnce(true).setOngoing(true);
-        if(volumeActions){
-            builder.addAction(action("VOL_DOWN","−5%",2,android.R.drawable.ic_media_rew))
-                   .addAction(action("VOL_TOGGLE",master==0?"恢复":"静音",3,android.R.drawable.ic_lock_silent_mode))
-                   .addAction(action("VOL_UP","+5%",4,android.R.drawable.ic_media_ff));
-        }else builder.addAction(action("STOP","停止",1,android.R.drawable.ic_media_pause));
-        return builder.build();
+        Intent show=new Intent(this,VolumePanelActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent panel=PendingIntent.getActivity(this,44,show,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+        return new Notification.Builder(this,"audio")
+            .setSmallIcon(R.drawable.ic_status)
+            .setContentTitle("声汇 · 混音 "+Math.round(master*100)+"%")
+            .setStyle(new Notification.MediaStyle().setMediaSession(mediaSession.getSessionToken()))
+            .setContentText("拖动调远端总音量 · 点开调每台设备")
+            .setContentIntent(panel).setOnlyAlertOnce(true).setOngoing(true)
+            .addAction(new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(this,android.R.drawable.ic_menu_manage),"音量面板",panel).build())
+            .build();
     }
-    private void foreground(String text,int type){
-        notificationText=text;
-        volumeActions=(type&ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)!=0;
-        startForeground(1,notification(),type);
+    private void foreground(){
+        mediaSession=new android.media.session.MediaSession(this,"SoundMesh");
+        volumeProvider=new VolumeProvider(VolumeProvider.VOLUME_CONTROL_ABSOLUTE,100,Math.round(master*100)){
+            @Override public void onSetVolumeTo(int value){main.post(()->setVolume(value));}
+            @Override public void onAdjustVolume(int direction){
+                if(direction==AudioManager.ADJUST_RAISE || direction==AudioManager.ADJUST_LOWER)
+                    main.post(()->setVolume(Math.round(master*100)+5*direction));
+            }
+        };
+        mediaSession.setPlaybackToRemote(volumeProvider);
+        mediaSession.setCallback(new android.media.session.MediaSession.Callback(){
+            @Override public void onSeekTo(long position){
+                setVolume((int)Math.max(0,Math.min(100,(position+500)/1000)));
+            }
+        },main);
+        updateMediaLabel(Math.round(master*100));
+        mediaSession.setSessionActivity(PendingIntent.getActivity(this,44,
+            new Intent(this,VolumePanelActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT));
+        updateMediaPosition(Math.round(master*100));
+        mediaSession.setActive(true);
+        startForeground(1,notification(),ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION|ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
         if(wifiLock==null){
             android.net.wifi.WifiManager wifi=(android.net.wifi.WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE);
             if(wifi!=null){wifiLock=wifi.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY,"SoundMesh:WiFi");wifiLock.acquire();}
@@ -84,32 +115,14 @@ public final class AudioService extends Service {
         if(intent==null)return START_NOT_STICKY;
         String action=intent.getAction();
         if("STOP".equals(action)) { stopSelf();return START_NOT_STICKY; }
-        if(action!=null&&action.startsWith("VOL_")){
-            if(!running){stopSelf();return START_NOT_STICKY;}
-            if(volumeActions){
-                int currentPercent=Math.round(master*100);
-                if(action.equals("VOL_DOWN"))setVolume(currentPercent-5);
-                if(action.equals("VOL_UP"))setVolume(currentPercent+5);
-                if(action.equals("VOL_TOGGLE"))setVolume(currentPercent==0?rememberedPercent:0);
-            }
-            return START_NOT_STICKY;
-        }
         try {
-            if("SEND".equals(action)||"DUPLEX".equals(action)) {
-                if(running)throw new IllegalStateException("请先停止当前模式");
-                duplex="DUPLEX".equals(action);monitor=!duplex;
-                foreground(duplex?"正在双向传输声音":"正在共享本机媒体声音",ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION|(duplex?ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK:0));
-                startSending(intent.getParcelableExtra("consent"));
-                if(duplex){startReceiving();mode="双向";}
-            } else if("RECEIVE".equals(action)) {
-                if(!running) {
-                    foreground("正在融合已连接设备的声音",ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
-                    startReceiving();
-                }
-            } else if("CONNECT".equals(action)) {
-                if((!"接收".equals(mode)&&!duplex)||!running)throw new IllegalStateException("请先启动接收模式");
-                connect(intent.getStringExtra("host"),intent.getStringExtra("pin"),intent.getStringExtra("name"),duplex,intent.getStringExtra("peer"));
-            }
+            if("FUSE".equals(action)){
+                if(running)return START_NOT_STICKY;
+                monitor=false;foreground();startSending(intent.getParcelableExtra("consent"));
+                startReceiving();mode="融合";status="融合已开启";
+            }else if("CONNECT".equals(action)&&running){
+                connect(intent.getStringExtra("host"),intent.getStringExtra("pin"),intent.getStringExtra("name"),true,intent.getStringExtra("peer"));
+            }else if(!running){stopSelf();}
         } catch(Exception e) { status="无法启动："+e.getMessage();MainActivity.lastError=status;stopSelf(); }
         return START_NOT_STICKY;
     }
@@ -135,6 +148,7 @@ public final class AudioService extends Service {
                     byte[] frame=new byte[FRAME];int n=0;
                     while(n<FRAME&&running) { int got=recorder.read(frame,n,FRAME-n,AudioRecord.READ_BLOCKING);if(got<0)throw new IOException("声音采集错误 "+got);n+=got; }
                     if(!running)break;
+                    localSource.apply(frame);
                     for(Subscriber s:subscribers) {
                         if(s.blockedAt>0&&System.currentTimeMillis()-s.blockedAt>15000){s.close();continue;}
                         if(!s.frames.offer(frame)){s.frames.poll();s.frames.offer(frame);}
@@ -160,7 +174,7 @@ public final class AudioService extends Service {
             }
             InputStream in=socket.getInputStream();OutputStream out=socket.getOutputStream();
             String[] hello=Wire.line(in).split(" ");
-            if(duplex&&hello.length==2&&hello[0].equals("SM2-FOCUS")&&hello[1].equals(code)){
+            if(hello.length==2&&hello[0].equals("SM2-FOCUS")&&hello[1].equals(code)){
                 monitor=false;out.write("OK FOCUS\n".getBytes("US-ASCII"));return;
             }
             if(hello.length<2||hello.length>3||!hello[0].equals("SOUNDMESH2")||!hello[1].equals(code)){
@@ -168,7 +182,7 @@ public final class AudioService extends Service {
                 out.write("ERR\n".getBytes("US-ASCII"));return;
             }
             out.write("OK 48000 2\n".getBytes("US-ASCII"));
-            if(duplex&&hello.length==3&&hello[2].matches("[0-9]{8}"))main.post(()->{if(running&&duplex)connect(ip,hello[2],ip,false,null);});
+            if(hello.length==3&&hello[2].matches("[0-9]{8}"))main.post(()->{if(running)connect(ip,hello[2],ip,false,null);});
             sub=new Subscriber(socket);subscribers.add(sub);
             while(running&&!socket.isClosed()) {
                 byte[] frame=sub.frames.poll(400,TimeUnit.MILLISECONDS);if(frame==null)frame=new byte[FRAME];
@@ -243,7 +257,7 @@ public final class AudioService extends Service {
         return String.join(" / ",result);
     }
     @Override public void onDestroy() {
-        running=false;main.removeCallbacks(refreshNotification);current=null; if(discovery!=null)discovery.close(); if(wifiLock!=null&&wifiLock.isHeld())wifiLock.release();
+        running=false;if(mediaSession!=null){mediaSession.setActive(false);mediaSession.release();mediaSession=null;}volumeProvider=null;main.removeCallbacks(refreshNotification);current=null; if(discovery!=null)discovery.close(); if(wifiLock!=null&&wifiLock.isHeld())wifiLock.release();
         if(listener!=null)try{listener.close();}catch(Exception ignored){}
         for(Subscriber s:subscribers)s.close();for(Remote r:sources)r.close();
         if(recorder!=null){try{recorder.stop();}catch(Exception ignored){}recorder.release();}

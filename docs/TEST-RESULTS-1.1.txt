@@ -1,0 +1,54 @@
+PASS Android outbound gain scales signed PCM
+PASS Android local send mute
+PASS Java buffer waits for pre-roll
+PASS Java PCM signed little-endian conversion
+PASS Java backlog stays bounded
+PASS Java discards stale samples
+PASS Java underrun is silence
+PASS Java rejects oversized handshake
+PASS Java rejects truncated frame
+PASS Android mixer gain, mute and master compose correctly
+PASS Android 66-source mixing stays within output range
+PASS Android master mute produces silence
+PASS local send gain adjusts both signed stereo channels
+PASS local send gain can silence outbound without altering the remote mixer
+PASS C# buffer waits for pre-roll
+PASS C# signed PCM conversion
+PASS C# backlog stays bounded
+PASS C# discards stale audio
+PASS C# underrun is silence
+PASS per-device gain, mute and master gain compose correctly
+PASS mixer respects output offset
+PASS 66-source mixing stays within output range
+PASS master mute produces silence
+PASS C# rejects oversized handshake
+PASS incorrect pairing is rejected
+Java test classes: C:\Users\ASUS\Documents\Codex\2026-11-18\ni\work\java-tests
+PASS Android Java codec connects to C# sender
+PASS C# fragmented stream -> Android Java codec
+PASS Android codec detects peer disconnect
+PASS Android JVM receives fragmented C# stream and detects EOF
+PASS Java fixture started
+PASS C# client receives Java PCM stream
+PASS C# client detects peer disconnect
+PASS Java sender accepts C# handshake
+PASS Java sender completed
+PASS forced reconnect preserves mix settings and duplex offer
+PASS stereo polarity survives reconnect without downmix
+PASS Windows process-excluding capture opens and streams 30 frames
+PASS Windows WASAPI capture -> local TCP receiver (no audio saved)
+RESULT: 23 C# checks passed
+Windows and Android 1.0 / 2026-11-21
+PASS final signed APK installed over 0.3, same signing identity verified.
+PASS final 1.0 Android app and Windows audio engine exchanged simultaneous audio for 500 inbound frames and acknowledged focus handoff (Android 12L emulator, ADB reverse-path forwarding).
+PASS Android SystemUI expanded media card showed media_progress_bar. Actual swipe changed mix gain from 80 to 31, reported by media session. Card tap opened VolumePanelActivity. Landscape compact layout hid the system seek bar.
+PASS Windows global hotkey registration and WM_HOTKEY dispatch opened/closed quick mixer; main and quick master slider synchronized.
+PASS signed stereo outbound scaling and mute in Java and C#; 66-source mixing remained within bounds.
+Not measured: physical handset OEM notification layout, acoustic output level, Bluetooth multipoint arbitration, iPhone Safari playback and Wi-Fi latency.
+1.1 UI and icon verification / 2026-11-21
+PASS Android 12L emulator installed 1.1 over 1.0 with matching signing certificate. Entered fusion, inspected the volume controls and visited device pairing and output settings.
+PASS Android SystemUI actual media-card drag changed mix gain from 80 to 37. Compact OEM layouts may require opening the media card.
+PASS Windows published x64 binary built with the multi-resolution icon. Rendered application window with custom icon, wave art, new navigation and aligned faders.
+PASS Android APK declares adaptive launcher for all densities and custom notification icon.
+PASS Windows audio engine and 1.1 Android client paired in the device tab, exchanged simultaneous audio for 500 frames and acknowledged monitor handoff using emulator port forwarding.
+LIMIT Apple target contains the updated icon asset but has not been built or signed here. Physical Android OEM notification styles and Bluetooth headset output not measured.

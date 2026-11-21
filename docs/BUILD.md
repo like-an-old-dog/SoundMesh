@@ -88,7 +88,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 - 换一个构建目录 = 换一把新密钥 = **无法覆盖安装**已签名的版本，必须先卸载。
 - 想长期分发，请把 `prototype.jks` 换成你自己的密钥库，并妥善保存。
 
-`AndroidManifest.xml` 里的 `versionCode` / `versionName` 需要手动改：当前为 `3` / `0.3.0`。
+`AndroidManifest.xml` 里的 `versionCode` / `versionName` 需要手动改：当前为 `5` / `1.1.0`。
 
 ---
 
@@ -131,17 +131,34 @@ Android 侧另有一套 JVM 测试（`AudioRing` / `MixBus` / `Wire` 的纯 Java
 
 ---
 
+## 图标与品牌素材
+
+`src/brand` 里是原始素材与生成脚本：
+
+| 文件 | 用途 |
+| --- | --- |
+| `mark.png` / `wave.png` | 主标记与会话声波插图 |
+| `make_assets.py` | 生成 Windows 多分辨率 `.ico`、Android 自适应启动器（`mipmap-*`）、通知图标与 `res/values/brand.xml` |
+
+生成后的资源已经提交在仓库里，正常构建不需要再跑一次；换品牌素材时才需要：
+
+```bash
+python src/brand/make_assets.py
+```
+
+Windows 客户端通过 `<ApplicationIcon>SoundMesh.ico</ApplicationIcon>` 与嵌入资源（`Brand.Icon` / `Brand.Mark` / `Brand.Wave`）使用这些素材；`SoundMesh.csproj` 里的 `EmbeddedResource` 负责把它们打进程序集。
+
 ## 打包发布
 
-0.3 的发布产物是三个文件，均由上面的构建流程产生：
+1.1 的发布产物是四个文件，均由上面的构建流程产生：
 
 | 文件 | 来源 |
 | --- | --- |
-| `SoundMesh-Windows-0.3.zip` | `Windows/` 目录（两个 exe + `THIRD-PARTY/`）整包压缩 |
-| `SoundMesh-Android-0.3.apk` | `build.ps1` 输出，重命名 |
-| `SoundMesh-Source-0.3.zip` | `src/` + `THIRD-PARTY/` + 文档，不含构建产物 |
+| `SoundMesh-Windows-1.1.zip` | `Windows/` 目录（两个 exe + `THIRD-PARTY/` + README）整包压缩 |
+| `SoundMesh-Android-1.1.apk` | `build.ps1` 输出，重命名 |
+| `SoundMesh-Source-1.1.zip` | `src/` + `THIRD-PARTY/` + 文档，不含构建产物 |
 
-发布前请确认：`src/android/AndroidManifest.xml` 的版本号已更新、`docs/TEST-RESULTS-0.3.txt` 是最新一次验证的日志、SHA256 已重新计算。
+发布前请确认：`src/android/AndroidManifest.xml` 的版本号已更新、`docs/TEST-RESULTS-1.1.txt` 是最新一次验证的日志、SHA256 已重新计算。
 
 ---
 

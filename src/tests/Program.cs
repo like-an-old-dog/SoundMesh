@@ -25,6 +25,12 @@ if(args.Length==3 && args[0]=="--duplex-emulator"){
 int passed = 0;
 void Check(bool condition, string label) { if (!condition) throw new Exception("FAIL " + label); Console.WriteLine("PASS " + label); passed++; }
 byte[] Pcm(short value) { var b = new byte[Wire.FrameBytes]; for (int i = 0; i < b.Length; i += 2) { b[i] = (byte)value; b[i + 1] = (byte)(value >> 8); } return b; }
+var signedStereo=Pcm(-12000);
+for(int i=2;i<signedStereo.Length;i+=4){signedStereo[i]=0x60;signedStereo[i+1]=0x09;}
+AudioSender.ScalePcm(signedStereo,25);
+Check(BitConverter.ToInt16(signedStereo,0)==-3000 && BitConverter.ToInt16(signedStereo,2)==600,"local send gain adjusts both signed stereo channels");
+AudioSender.ScalePcm(signedStereo,0);
+Check(signedStereo.All(b=>b==0),"local send gain can silence outbound without altering the remote mixer");
 var ring = new AudioRing(); var samples = new float[480]; ring.Push(Pcm(-16384));
 Check(ring.Read(samples, 480) == 0, "C# buffer waits for pre-roll");
 for (int i = 0; i < 4; i++) ring.Push(Pcm(-16384));

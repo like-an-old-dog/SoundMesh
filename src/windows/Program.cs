@@ -12,30 +12,33 @@ static class Program {
 }
 
 sealed partial class MainForm : Form {
-    static readonly Color Paper=Color.FromArgb(242,245,240), Ink=Color.FromArgb(26,46,42), Pine=Color.FromArgb(18,66,56), Sage=Color.FromArgb(211,236,215);
+    static readonly Color Paper=Color.FromArgb(242,244,249), Ink=Color.FromArgb(30,36,62), Pine=Color.FromArgb(28,31,67), Sage=Color.FromArgb(235,235,253);
     readonly FlowLayoutPanel body=new(){Dock=DockStyle.Fill,AutoScroll=true,FlowDirection=FlowDirection.TopDown,WrapContents=false,Padding=new(22)};
     readonly List<(RemoteAudio source,Label info,ProgressBar meter)> channels=[];
     readonly HashSet<string> pending=[];
+    readonly Dictionary<RemoteAudio,TrackBar> peerSliders=new();
     readonly ComboBox nearby=Choice(), profile=Choice(), routes=Choice();
     readonly TextBox host=Field("局域网 IP"), pin=Field("8 位配对码");
     readonly Label status=Caption("准备就绪"), sendState=Caption(""), summary=Caption("");
     readonly FlowLayoutPanel strips=Stack();
     readonly System.Windows.Forms.Timer timer=new(){Interval=450};
-    readonly Button receiveTab=Btn("耳机监听"), sendTab=Btn("共享声音"), betaTab=Btn("双向空间  Beta");
-    readonly Button search=Btn("刷新"), select=Btn("连接所选设备"), share=Btn("开始共享"), qr=Btn("显示配对二维码");
-    readonly CheckBox quiet=new(){AutoSize=true,Text="共享时静音电脑当前输出"}, listen=new(){AutoSize=true,Text="在本机监听",Checked=true};
-    readonly TrackBar master=new(){Minimum=0,Maximum=100,Value=80,Width=250,TickStyle=TickStyle.None};
+    readonly Button search=Btn("刷新"), select=Btn("连接所选设备"), share=Btn("开始融合"), qr=Btn("显示配对二维码");
+    readonly CheckBox listen=new(){AutoSize=true,Text="在本机监听",Checked=true};
+    readonly TrackBar master=new LevelSlider(){Minimum=0,Maximum=100,Value=80,Width=250,TickStyle=TickStyle.None};
     readonly Dictionary<string,Control> pages=[];
-    FlowLayoutPanel receive=null!,send=null!,beta=null!;
+    FlowLayoutPanel receive=null!,send=null!,routing=null!;
+    readonly LocalSessions localApps=new();
+    readonly TrackBar sendGain=new LevelSlider(){Maximum=100,Value=100,Width=220,TickStyle=TickStyle.None};
+    readonly TrackBar localGain=new LevelSlider(){Maximum=100,Value=100,Width=220,TickStyle=TickStyle.None};
     IPhoneBridge? iphone;
     AudioSender? sender; NetworkMixer? mixer; CancellationTokenSource? advertising;
-    MMDevice? mutedDevice; bool wasMuted,duplex, scanning,closing; string view="监听",advertiseIssue="";
+    bool scanning,closing; string advertiseIssue="";
     public MainForm() {
         Text="声汇  ·  SoundMesh";BackColor=Paper;ForeColor=Ink;Font=new Font("Microsoft YaHei UI",10);
         ClientSize=new Size(800,740);MinimumSize=new Size(660,530);
-        var header=new FlowLayoutPanel{Dock=DockStyle.Top,Height=78,BackColor=Pine,Padding=new(18,13,0,0)};
-        var title=Caption("声汇",23,true);title.ForeColor=Color.White;header.Controls.Add(title);
-        header.Controls.AddRange([receiveTab,sendTab,betaTab]);Controls.Add(body);Controls.Add(header);
+        using(var iconStream=typeof(MainForm).Assembly.GetManifestResourceStream("Brand.Icon")){using var appIcon=new Icon(iconStream!);Icon=(Icon)appIcon.Clone();}
+        var header=BuildHeader();Controls.Add(body);Controls.Add(header);
+        BuildSessionHero();
         receive=Card("附近设备");var line=Line();nearby.Width=310;line.Controls.AddRange([nearby,search,select]);receive.Controls.Add(line);
         var more=Line();var manual=Btn("手动配对");var import=Btn("读取二维码图片");more.Controls.AddRange([manual,import]);receive.Controls.Add(more);
         var fields=Line();host.Width=185;pin.Width=140;var join=Btn("连接");fields.Controls.AddRange([host,pin,join]);receive.Controls.Add(fields);fields.Visible=false;
@@ -53,83 +56,87 @@ sealed partial class MainForm : Form {
         select.Click+=async(_,_)=>{if(nearby.SelectedItem is not Peer peer){Tell("先在另一台设备开启共享，再刷新列表");return;}
             string key=Lan.Read("peer."+peer.Id);if(key==""){key=AskPin(peer.Name);if(key=="")return;}
             await Connect(peer.Host,key,peer.Name,peer.Id,true);};
-        send=Card("共享本机声音");var action=Line();var safari=Btn("iPhone 浏览器监听");
-        safari.Click+=async(_,_)=>{
-            if(sender==null)ToggleShare();
-            if(sender==null||routes.SelectedItem is not string ip){Tell("请先接入局域网并开启共享");return;}
-            safari.Enabled=false;
+        send=Card("连接本机");send.Controls.Add(qr);
+        var browser=Btn("邀请 iPhone 网页监听");send.Controls.Add(browser);
+        browser.Click+=async(_,_)=>{
+            if(sender==null||routes.SelectedItem is not string ip)return;
+            var session=sender;browser.Enabled=false;
             try{
-                if(iphone==null){iphone=new IPhoneBridge(IPAddress.Parse(ip),sender.Code);await iphone.Start();routes.Enabled=false;}
-                DisplayQr(iphone.Invitation,"用 iPhone 系统相机扫码，在 Safari 中打开");
+                if(iphone==null){iphone=new IPhoneBridge(IPAddress.Parse(ip),session.Code);await iphone.Start();}
+                if(sender==session&&iphone!=null){routes.Enabled=false;DisplayQr(iphone.Invitation,"用 iPhone 系统相机扫码");}
             }catch(Exception e){if(iphone!=null)await iphone.DisposeAsync();iphone=null;Tell("网页监听启动失败 "+e.Message);}
-            finally{safari.Enabled=true;}
+            finally{browser.Enabled=true;}
         };
-        action.Controls.AddRange([share,qr,safari]);send.Controls.Add(action);
-        routes.Width=300;send.Controls.Add(routes);send.Controls.Add(sendState);send.Controls.Add(quiet);
+        routes.Width=300;send.Controls.Add(routes);send.Controls.Add(sendState);
         qr.Click+=(_,_)=>ShowQr();share.Click+=(_,_)=>ToggleShare();
-        quiet.CheckedChanged+=(_,_)=>{if(sender!=null && !duplex)SetQuiet(quiet.Checked);};
-        beta=Card("双向空间  Beta");beta.Controls.Add(Caption("各设备进入双向空间后，连接一次即可互相收发。三台以上请逐对连接。"));
-        var focus=Btn("把监听切到本机");beta.Controls.Add(focus);
+        routing=Card("耳机输出");routing.Controls.Add(Caption("在耳机所在设备接管监听。三台或更多设备请逐对连接。"));
+        var focus=Btn("把监听切到本机");routing.Controls.Add(focus);
         focus.Click+=async(_,_)=>{listen.Checked=true;SetGain();int failed=0;
             foreach(var r in channels.ToArray()){try{await r.source.YieldPeer();}catch{failed++;}}
             status.Text=failed==0?"正在本机监听":"已开启本机监听，部分对端暂时无法切换";};
-        beta.Controls.Add(listen);listen.CheckedChanged+=(_,_)=>SetGain();
+        routing.Controls.Add(listen);listen.CheckedChanged+=(_,_)=>SetGain();
         var mix=Card("混音台");pages["mix"]=mix;
-        var sound=Line();sound.Controls.Add(Caption("总音量"));sound.Controls.Add(master);sound.Controls.Add(profile);mix.Controls.Add(sound);
+        var localRow=Line();
+        var localLabel=Caption("本机应用   100%");
+        AlignChannel(localLabel,localGain);localRow.Controls.AddRange([localLabel,localGain]);mix.Controls.Add(localRow);
+        localGain.ValueChanged+=(_,_)=>{
+            localLabel.Text="本机应用   "+localGain.Value+"%";
+            try{localApps.Apply(localGain.Value);}catch(Exception e){Tell("本机应用音量不可用 "+e.Message);}
+        };
+        var outbound=Line();var outboundLabel=Caption("本机发送   100%");
+        AlignChannel(outboundLabel,sendGain);outbound.Controls.AddRange([outboundLabel,sendGain]);mix.Controls.Add(outbound);
+        sendGain.ValueChanged+=(_,_)=>{if(sender!=null)sender.OutboundPercent=sendGain.Value;
+            outboundLabel.Text="本机发送   "+sendGain.Value+"%";SyncQuick();};
+        var sound=Line();var incomingLabel=Caption("其他设备合计   80%");AlignChannel(incomingLabel,master);sound.Controls.AddRange([incomingLabel,master]);mix.Controls.Add(sound);
+        master.ValueChanged+=(_,_)=>incomingLabel.Text="其他设备合计   "+master.Value+"%";
+        var tuning=Line();tuning.Controls.Add(Caption("播放缓冲"));tuning.Controls.Add(profile);routing.Controls.Add(tuning);
         profile.Items.AddRange(["灵敏 · 25 ms","均衡 · 70 ms","稳定 · 90 ms"]);profile.SelectedIndex=1;
         profile.SelectedIndexChanged+=(_,_)=>{foreach(var r in channels)r.source.Ring.PrebufferMs=BufferMs;};
         master.ValueChanged+=(_,_)=>SetGain();mix.Controls.Add(summary);mix.Controls.Add(strips);body.Controls.Add(status);
-        receiveTab.Click+=(_,_)=>Navigate("监听");sendTab.Click+=(_,_)=>Navigate("共享");betaTab.Click+=(_,_)=>Navigate("双向");
-        timer.Tick+=(_,_)=>{foreach(var r in channels){r.info.Text=r.source.Status+"   ·   缓冲 "+r.source.Ring.BufferMs+" ms · 断流 "+r.source.Ring.Underruns+" 次";r.meter.Value=Math.Clamp((int)(r.source.Level*100),0,100);}
-            summary.Text=channels.Count==0?"连接设备后可单独调节音量":"已添加 "+channels.Count+" 台设备";
+        timer.Tick+=(_,_)=>{SyncQuick();if(localGain.Value!=100){try{localApps.Refresh();}catch(Exception e){Tell(e.Message);}}foreach(var r in channels){r.info.Text=r.source.Status+"   ·   缓冲 "+r.source.Ring.BufferMs+" ms · 断流 "+r.source.Ring.Underruns+" 次";r.meter.Value=Math.Clamp((int)(r.source.Level*100),0,100);}
+            summary.Text=channels.Count==0?"还没有远端通道":"远端设备   "+channels.Count+" 台";
             if(sender!=null)sendState.Text="配对码  "+sender.Code+"      已接入 "+sender.ClientCount+" 台    "+advertiseIssue+sender.Error;
         };
         ConfigureQuickMixer(header);
-        Shown+=async(_,_)=>{Navigate("监听");await Scan();};FormClosing+=(_,_)=>{closing=true;StopSession();timer.Stop();};timer.Start();
+        InstallNavigation(mix);
+        Shown+=(_,_)=>UpdateSession();FormClosing+=(_,_)=>{closing=true;StopSession();timer.Stop();};timer.Start();
     }
     int BufferMs=>profile.SelectedIndex switch{0=>25,2=>90,_=>70};
-    void Navigate(string next){
-        if(view!=next && (sender!=null||channels.Count>0||pending.Count>0)){
-            if(pending.Count>0){Tell("正在连接，请稍候");return;}
-            if(MessageBox.Show(this,"切换模式会结束当前连接。继续切换？","声汇",MessageBoxButtons.OKCancel)!=DialogResult.OK)return;
-            StopSession();
-        }
-        view=next;duplex=next=="双向";
-        receive.Visible=next!="共享";send.Visible=next!="监听";beta.Visible=duplex;pages["mix"].Visible=next!="共享";quiet.Visible=!duplex;
-        foreach(var (button,on) in new[]{(receiveTab,next=="监听"),(sendTab,next=="共享"),(betaTab,duplex)})button.BackColor=on?Color.White:Sage;
-        share.Text=sender==null?(duplex?"开启双向共享":"开始共享"):"停止共享";qr.Enabled=sender!=null;routes.Enabled=sender!=null;
-        sendState.Text=sender==null?"开启后可从另一台设备发现本机或扫码配对。":sendState.Text;
-        if(duplex&&sender==null)status.Text="先在参与设备上开启双向共享，再选取附近设备。";
+    void UpdateSession(){
+        bool active=sender!=null;
+        share.Text=active?"结束融合":"开始融合";
+        receive.Enabled=send.Enabled=routing.Enabled=pages["mix"].Enabled=active;
+        quickButton.Enabled=active;
+        sessionHeading.Text=active?"设备融合中":"准备融合";
+        sessionDesc.Text=active?"连接同一局域网的设备后，将监听切到耳机所在设备。":"在手机和电脑上开始融合，让一副耳机听到多台设备。";
+        share.BackColor=active?Color.FromArgb(61,65,112):Color.FromArgb(173,244,229);
+        share.ForeColor=active?Color.White:Ink;
+        SelectPage(active?currentPage:0);
+        qr.Enabled=active;
+        if(!active)status.Text="会话尚未启动";
     }
-    void SetGain(){if(mixer!=null){mixer.Master=master.Value/100f;mixer.SetMonitoring(!duplex||listen.Checked);}}
+    void SetGain(){if(mixer!=null){mixer.Master=master.Value/100f;mixer.SetMonitoring(listen.Checked);}}
     void StopSession(){
         if(iphone!=null){var bridge=iphone;iphone=null;_=bridge.DisposeAsync();}
-        quiet.Enabled=true;advertising?.Cancel();advertising=null;advertiseIssue="";SetQuiet(false);sender?.Dispose();sender=null;mixer?.Dispose();mixer=null;channels.Clear();
+        try{localGain.Value=100;localApps.Restore();}catch(Exception e){Tell("恢复本机应用音量失败 "+e.Message);}
+        advertising?.Cancel();advertising=null;advertiseIssue="";sender?.Dispose();sender=null;mixer?.Dispose();mixer=null;channels.Clear();peerSliders.Clear();sendGain.Value=100;
         while(strips.Controls.Count>0)strips.Controls[0].Dispose();
     }
-    void SetQuiet(bool enabled){
-        try {
-            if(enabled&&mutedDevice==null){using var enumerator=new MMDeviceEnumerator();mutedDevice=enumerator.GetDefaultAudioEndpoint(DataFlow.Render,Role.Multimedia);
-                wasMuted=mutedDevice.AudioEndpointVolume.Mute;mutedDevice.AudioEndpointVolume.Mute=true;}
-            if(!enabled&&mutedDevice!=null){mutedDevice.AudioEndpointVolume.Mute=wasMuted;mutedDevice.Dispose();mutedDevice=null;}
-        }catch(Exception e){Tell("输出设备音量不可用 "+e.Message);}
-    }
     void ToggleShare(){
-        if(sender!=null){StopSession();Navigate(view);return;}
+        if(sender!=null){StopSession();UpdateSession();return;}
         try{
             var routeList=Lan.Routes().OrderByDescending(x=>x.score).Select(x=>x.ip.ToString()).Distinct().ToArray();
             routes.Items.Clear();routes.Items.AddRange(routeList);if(routes.Items.Count>0)routes.SelectedIndex=0;
-            sender=new AudioSender{Code=Lan.Pin};
+            sender=new AudioSender{Code=Lan.Pin,OutboundPercent=sendGain.Value};
             var instance=sender;
-            if(duplex)sender.YieldRequested=()=>{if(!closing&&IsHandleCreated)BeginInvoke(new Action(()=>{if(sender==instance){listen.Checked=false;SetGain();}}));};
-            if(duplex)sender.ReverseRequested=(ip,code)=>{if(!closing&&IsHandleCreated)BeginInvoke(new Action(async()=>{if(sender==instance&&duplex)await Connect(ip,code,ip,null,false);}));};
-            if(duplex)listen.Checked=false;
-            sender.Start(duplex||quiet.Checked);if(!duplex&&quiet.Checked)SetQuiet(true);
-            quiet.Enabled=false;advertising=new CancellationTokenSource();var token=advertising.Token;
+            sender.YieldRequested=()=>{if(!closing&&IsHandleCreated)BeginInvoke(new Action(()=>{if(sender==instance){listen.Checked=false;SetGain();}}));};
+            sender.ReverseRequested=(ip,code)=>{if(!closing&&IsHandleCreated)BeginInvoke(new Action(async()=>{if(sender==instance)await Connect(ip,code,ip,null,false);}));};
+            listen.Checked=false;
+            sender.Start(isolated:true);
+            advertising=new CancellationTokenSource();var token=advertising.Token;
             _=Task.Run(async()=>{try{await Lan.Advertise(token);}catch(Exception){if(!token.IsCancellationRequested)advertiseIssue="发现端口不可用，可扫码配对。";}});
-            Navigate(view);status.Text="共享已开启";
-        }catch(Exception e){StopSession();Tell("共享启动失败 "+e.Message);}
-        quiet.Enabled=sender==null;
+            UpdateSession();_=Scan();status.Text="融合已开启";
+        }catch(Exception e){StopSession();UpdateSession();Tell("融合启动失败 "+e.Message);}
     }
     async Task Scan(){
         if(scanning)return;scanning=true;search.Enabled=false;
@@ -138,13 +145,14 @@ sealed partial class MainForm : Form {
         catch(Exception e){Tell(e.Message);}finally{scanning=false;search.Enabled=true;}
     }
     async Task Connect(string ip,string key,string name,string? peerId,bool reverse){
-        if(view=="共享"||duplex&&sender==null){Tell("请先开启双向共享");return;}
+        if(sender==null){Tell("请先开始融合");return;}
+        var session=sender;
         if(!IPAddress.TryParse(ip,out var addr)||addr.AddressFamily!=AddressFamily.InterNetwork||IPAddress.IsLoopback(addr)||Lan.Routes().Any(r=>r.ip.Equals(addr))||!Regex.IsMatch(key,"^[0-9]{8}$")){Tell("请检查对端 IPv4 地址和 8 位配对码");return;}
         if(channels.Any(c=>c.source.Address==ip)||!pending.Add(ip))return;
-        var source=new RemoteAudio(name,ip){ReverseCode=duplex&&reverse?sender?.Code:null};
+        var source=new RemoteAudio(name,ip){ReverseCode=reverse?sender?.Code:null};
         source.Ring.PrebufferMs=BufferMs;
         try {
-            await source.Start(key);if(closing){source.Dispose();return;}
+            await source.Start(key);if(closing||session!=sender){source.Dispose();return;}
             mixer??=new NetworkMixer();SetGain();mixer.Add(source);AddStrip(source);
             if(peerId!=null)Lan.Save("peer."+peerId,key);status.Text="已连接 "+name;
         }catch(Exception e){source.Dispose();if(e is InvalidDataException&&peerId!=null)Lan.Save("peer."+peerId,"");Tell("连接失败 "+e.Message+"。请确认在同一局域网，电脑防火墙允许声汇通过专用网络。");}
@@ -152,10 +160,11 @@ sealed partial class MainForm : Form {
     }
     void AddStrip(RemoteAudio source){
         var strip=Stack();strip.BackColor=Paper;strip.Padding=new(10);strip.Controls.Add(Caption(source.Name,13,true));var details=Caption("");strip.Controls.Add(details);
-        var row=Line();var gain=new TrackBar{Maximum=100,Value=65,Width=210,TickStyle=TickStyle.None};var mute=new CheckBox{Text="静音",AutoSize=true};
+        var row=Line();var gain=new LevelSlider{Maximum=100,Value=65,Width=210,TickStyle=TickStyle.None};var mute=new CheckBox{Text="静音",AutoSize=true};
         var meter=new ProgressBar{Width=75,Height=8,Margin=new(8,13,8,0)};var remove=Btn("移除");
+        peerSliders[source]=gain;
         gain.ValueChanged+=(_,_)=>source.Gain=gain.Value/100f;mute.CheckedChanged+=(_,_)=>source.Muted=mute.Checked;
-        remove.Click+=(_,_)=>{mixer?.Remove(source);channels.RemoveAll(c=>c.source==source);strip.Dispose();};
+        remove.Click+=(_,_)=>{peerSliders.Remove(source);mixer?.Remove(source);channels.RemoveAll(c=>c.source==source);strip.Dispose();};
         row.Controls.AddRange([gain,mute,meter,remove]);strip.Controls.Add(row);strips.Controls.Add(strip);channels.Add((source,details,meter));
     }
     void ShowQr(){
@@ -170,7 +179,7 @@ sealed partial class MainForm : Form {
     }
     string AskPin(string name){using var f=new Form{Text="首次配对 · "+name,ClientSize=new(320,115),StartPosition=FormStartPosition.CenterParent};var box=Field("输入对端显示的 8 位配对码");box.Dock=DockStyle.Top;var ok=Btn("配对并记住");ok.Dock=DockStyle.Bottom;ok.DialogResult=DialogResult.OK;f.AcceptButton=ok;f.Controls.AddRange([box,ok]);return f.ShowDialog(this)==DialogResult.OK?box.Text.Trim():"";}
     void Tell(string message){status.Text=message;}
-    FlowLayoutPanel Card(string title){var box=Stack();box.BackColor=Color.White;box.Padding=new(16);box.Margin=new(0,0,0,12);box.MinimumSize=new(560,0);box.Controls.Add(Caption(title,17,true));body.Controls.Add(box);return box;}
+    FlowLayoutPanel Card(string title){var box=Stack();box.BackColor=Color.White;box.Padding=new(20,14,20,14);box.Margin=new(0,0,0,12);box.MinimumSize=new(610,0);box.Controls.Add(Caption(title,17,true));body.Controls.Add(box);return box;}
     static FlowLayoutPanel Stack()=>new(){AutoSize=true,FlowDirection=FlowDirection.TopDown,WrapContents=false};
     static FlowLayoutPanel Line()=>new(){AutoSize=true,WrapContents=true,Margin=new(0,4,0,4)};
     static ComboBox Choice()=>new(){DropDownStyle=ComboBoxStyle.DropDownList,Width=160,Margin=new(3,8,3,3)};

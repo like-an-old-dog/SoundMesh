@@ -7,7 +7,7 @@ $ErrorActionPreference='Stop'
 New-Item -ItemType Directory -Force $BuildDirectory | Out-Null
 $BuildDirectory=(Resolve-Path -LiteralPath $BuildDirectory).Path
 $android=Join-Path $PSScriptRoot '..\android\app'
-& "$JavaHome\bin\javac.exe" -encoding UTF-8 -d $BuildDirectory "$android\AudioRing.java" "$android\Wire.java" "$android\MixBus.java" "$PSScriptRoot\WireProbe.java"
+& "$JavaHome\bin\javac.exe" -encoding UTF-8 -d $BuildDirectory "$android\AudioRing.java" "$android\Wire.java" "$android\MixBus.java" "$android\SourceGain.java" "$PSScriptRoot\WireProbe.java"
 if($LASTEXITCODE -ne 0){throw 'JVM test compilation failed'}
 & "$JavaHome\bin\java.exe" -cp $BuildDirectory WireProbe
 if($LASTEXITCODE -ne 0){throw 'JVM checks failed'}

@@ -42,6 +42,10 @@
 
 分发本项目的二进制构建时，必须随包保留 `THIRD-PARTY/` 目录下的许可证文件。
 
+## 品牌素材
+
+`src/brand/` 下的标记、会话声波插图，以及由它们生成的 Windows 图标、Android 启动器与通知图标，均为本项目原创，随仓库分发但**不属于任何第三方许可证**；未经作者许可不得用于其他项目或产品。
+
 ## 商标
 
 "声汇"与"SoundMesh"为本项目的非注册商标。Android 应用包名 `app.soundmesh.audio` 与 Windows 注册表键 `HKCU\Software\SoundMesh` 属本项目标识，保留用于官方版本。

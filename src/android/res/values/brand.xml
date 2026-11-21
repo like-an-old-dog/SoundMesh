@@ -1,0 +1,1 @@
+<resources><color name="icon_ground">#423DC5</color><style name="SoundMeshTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:colorAccent">#514ADD</item><item name="android:windowLightStatusBar">true</item><item name="android:statusBarColor">#F3F4F9</item><item name="android:navigationBarColor">#F3F4F9</item></style></resources>

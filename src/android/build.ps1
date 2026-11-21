@@ -13,14 +13,19 @@ $env:PATH = "$JavaHome\bin;" + $env:PATH
 New-Item -ItemType Directory -Force -Path $BuildDirectory,(Join-Path $BuildDirectory 'classes'),(Join-Path $BuildDirectory 'dex') | Out-Null
 $BuildDirectory = (Resolve-Path -LiteralPath $BuildDirectory).Path
 function Check-Exit { if ($LASTEXITCODE -ne 0) { throw "Build command failed: $LASTEXITCODE" } }
+$generated=Join-Path $BuildDirectory 'generated'
+New-Item -ItemType Directory -Force $generated | Out-Null
+& "$BuildTools\aapt2.exe" compile --dir "$PSScriptRoot\res" -o "$BuildDirectory\resources.zip"
+Check-Exit
+& "$BuildTools\aapt2.exe" link -o "$BuildDirectory\unsigned.apk" -I $AndroidJar --manifest "$PSScriptRoot\AndroidManifest.xml" --java $generated "$BuildDirectory\resources.zip"
+Check-Exit
 $sources = Get-ChildItem (Join-Path $PSScriptRoot 'app') -Filter '*.java' | ForEach-Object FullName
+$sources += (Join-Path $generated 'app\soundmesh\audio\R.java')
 & "$JavaHome\bin\javac.exe" -encoding UTF-8 -source 8 -target 8 -Xlint:-options -cp "$AndroidJar;$PSScriptRoot\lib\zxing-core-3.5.3.jar" -d "$BuildDirectory\classes" @sources
 Check-Exit
 & "$JavaHome\bin\jar.exe" cf "$BuildDirectory\classes.jar" -C "$BuildDirectory\classes" .
 Check-Exit
 & "$BuildTools\d8.bat" --release --min-api 29 --lib $AndroidJar --output "$BuildDirectory\dex" "$BuildDirectory\classes.jar" "$PSScriptRoot\lib\zxing-core-3.5.3.jar"
-Check-Exit
-& "$BuildTools\aapt2.exe" link -o "$BuildDirectory\unsigned.apk" -I $AndroidJar --manifest "$PSScriptRoot\AndroidManifest.xml"
 Check-Exit
 & "$JavaHome\bin\jar.exe" uf "$BuildDirectory\unsigned.apk" -C "$BuildDirectory\dex" classes.dex
 Check-Exit

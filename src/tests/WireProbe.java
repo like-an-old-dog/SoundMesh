@@ -10,6 +10,10 @@ public final class WireProbe {
     static byte[] pcm(int value){byte[] b=new byte[Wire.FRAME];for(int i=0;i<b.length;i+=2){b[i]=(byte)value;b[i+1]=(byte)(value>>8);}return b;}
     public static void main(String[] args)throws Exception {
         if(args.length==0) {
+            app.soundmesh.audio.SourceGain gain=new app.soundmesh.audio.SourceGain();
+            byte[] local=pcm(-12000);gain.set(25);gain.apply(local);
+            check((short)((local[0]&255)|(local[1]<<8))==-3000,"Android outbound gain scales signed PCM");
+            gain.set(0);gain.apply(local);check(Arrays.equals(local,new byte[local.length]),"Android local send mute");
             AudioRing ring=new AudioRing();float[] out=new float[480];
             ring.push(pcm(-16384));check(ring.read(out,480)==0,"Java buffer waits for pre-roll");
             for(int i=0;i<4;i++)ring.push(pcm(-16384));
