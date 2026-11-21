@@ -203,9 +203,10 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and [docs/USAGE.md](docs/US
 
 ## Authors
 
-Designed, implemented and released by two authors; the repository and release process are currently maintained by:
+Designed, implemented and released by two authors:
 
-- **like-an-old-dog** — [@like-an-old-dog](https://github.com/like-an-old-dog)
+- **like-an-old-dog** — [@like-an-old-dog](https://github.com/like-an-old-dog) (repository maintenance and releases)
+- **2222223233** — [@2222223233](https://github.com/2222223233)
 
 ## Copyright and third parties
 

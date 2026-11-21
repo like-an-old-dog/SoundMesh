@@ -1,6 +1,6 @@
 # 版权与授权说明 · Copyright and Permission
 
-声汇 SoundMesh（以下简称"本项目"）由两位作者共同创作（当前仓库维护者：like-an-old-dog），**保留所有权利（All Rights Reserved）**。
+声汇 SoundMesh（以下简称"本项目"）由 like-an-old-dog 与 2222223233 共同创作，**保留所有权利（All Rights Reserved）**。
 
 本项目**没有**采用 MIT、Apache-2.0、GPL 等开源许可证。本仓库中的源码、文档、截图与构建产物均受著作权法保护。
 
@@ -48,4 +48,4 @@
 
 ---
 
-*This project is **not** open-source licensed. It is copyright the SoundMesh authors (repository maintained by like-an-old-dog), all rights reserved. You may read, study, fork for study, and run official builds for personal evaluation. Redistribution, modification-and-redistribution, and any commercial use require prior written permission. Third-party components remain under their own licenses (see above and `THIRD-PARTY/`).*
+*This project is **not** open-source licensed. It is copyright like-an-old-dog and 2222223233, all rights reserved. You may read, study, fork for study, and run official builds for personal evaluation. Redistribution, modification-and-redistribution, and any commercial use require prior written permission. Third-party components remain under their own licenses (see above and `THIRD-PARTY/`).*

@@ -2,6 +2,8 @@
 
 **把同一个局域网里几台设备的声音，汇到一副耳机里。** Windows、Android 与 iPhone 网页试听，48 kHz / 16 bit 立体声多路混音。
 
+> 本版本由 **like-an-old-dog**（[@like-an-old-dog](https://github.com/like-an-old-dog)）与 **2222223233**（[@2222223233](https://github.com/2222223233)）联合发布。
+
 
 ## 下载
 
