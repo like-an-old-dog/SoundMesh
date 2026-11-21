@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f0f3ed">
+  <meta name="referrer" content="no-referrer">
+  <title>声汇 · 耳机监听</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/audio.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="brandmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>声汇</div>
+    <span class="edition" lang="en">SoundMesh</span>
+  </header>
+  <main>
+    <section class="console" aria-labelledby="listen-title">
+      <div class="console-head"><h1 id="listen-title">耳机监听</h1><span class="lamp" id="lamp"><i></i><span id="lamp-text">待连接</span></span></div>
+      <div class="scope" aria-hidden="true"><canvas id="scope"></canvas><div class="scope-label">STEREO OUTPUT</div></div>
+      <p id="hint" role="status">正在连接电脑…</p>
+      <button id="play" class="start" type="button" disabled><span class="playmark"></span><span id="play-label">开始监听</span></button>
+    </section>
+
+    <section id="mix" class="mix" aria-labelledby="mix-title">
+      <div class="section-head"><h2 id="mix-title">混音台</h2><button id="add" type="button" class="text-action" disabled>＋ 添加设备</button></div>
+      <div class="sheet">
+        <div class="master">
+          <label for="master"><b>总音量</b></label><output id="master-value" for="master">80%</output>
+          <input type="range" id="master" min="0" max="100" value="80">
+        </div>
+        <div id="channels"></div>
+      </div>
+    </section>
+    <p class="foot">耳机接至 iPhone，在系统控制中心选择声音输出。</p>
+  </main>
+
+  <dialog id="pair" aria-labelledby="pair-title">
+    <form method="dialog" class="dialog-head"><h2 id="pair-title">添加声音来源</h2><button class="close" aria-label="关闭" value="cancel">×</button></form>
+    <div class="dialog-inner">
+      <button class="discover" id="discover" type="button">查找附近设备</button>
+      <div id="devices"></div>
+      <form id="pair-form">
+        <label for="host">发送端局域网地址</label>
+        <input id="host" placeholder="如 192.168.3.8" inputmode="decimal" autocapitalize="off" autocomplete="off" required>
+        <label for="pin">8 位配对码</label>
+        <input id="pin" placeholder="发送端显示的数字" type="password" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" autocomplete="off" required>
+        <button id="join" class="join" type="submit">连接设备</button>
+      </form>
+      <p id="pair-status" role="status"></p>
+    </div>
+  </dialog>
+</body>
+</html>

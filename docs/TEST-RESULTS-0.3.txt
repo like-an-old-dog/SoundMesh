@@ -1,0 +1,45 @@
+PASS Java buffer waits for pre-roll
+PASS Java PCM signed little-endian conversion
+PASS Java backlog stays bounded
+PASS Java discards stale samples
+PASS Java underrun is silence
+PASS Java rejects oversized handshake
+PASS Java rejects truncated frame
+PASS Android mixer gain, mute and master compose correctly
+PASS Android 66-source mixing stays within output range
+PASS Android master mute produces silence
+PASS C# buffer waits for pre-roll
+PASS C# signed PCM conversion
+PASS C# backlog stays bounded
+PASS C# discards stale audio
+PASS C# underrun is silence
+PASS per-device gain, mute and master gain compose correctly
+PASS mixer respects output offset
+PASS 66-source mixing stays within output range
+PASS master mute produces silence
+PASS C# rejects oversized handshake
+PASS incorrect pairing is rejected
+Java test classes: C:\Users\ASUS\Documents\Codex\2026-11-18\ni\work\java-tests
+PASS Android Java codec connects to C# sender
+PASS C# fragmented stream -> Android Java codec
+PASS Android codec detects peer disconnect
+PASS Android JVM receives fragmented C# stream and detects EOF
+PASS Java fixture started
+PASS C# client receives Java PCM stream
+PASS C# client detects peer disconnect
+PASS Java sender accepts C# handshake
+PASS Java sender completed
+PASS forced reconnect preserves mix settings and duplex offer
+PASS stereo polarity survives reconnect without downmix
+PASS Windows process-excluding capture opens and streams 30 frames
+PASS Windows WASAPI capture -> local TCP receiver (no audio saved)
+RESULT: 21 C# checks passed
+
+0.3 targeted verification, 2026-11-21
+PASS Android API 32 emulator installed signed APK over previous version.
+PASS Android instrumentation fired the real notification PendingIntents for +5, -5, mute, restore. Notification and mixer gain: 80, 85, 80, 0, 80.
+PASS Windows hotkey registration and WM_HOTKEY dispatch. Quick mixer and main slider tracked both directions.
+Jitter comparison: 14 s of ordered 10 ms packets, periodic 50-90 ms stalls. 0.2: 2 underruns / 60 ms missing; 0.3: 1 underrun / 50 ms missing. The 0.3 balanced profile starts with 70 ms buffering. Field experience can differ.
+PASS Chromium: real Kestrel bridge received synthetic stereo PCM via authenticated v2 TCP, WebSocket and Web Audio playback analyser. Per-channel mute and pause verified.
+LIMIT Windows WebKit test runtime lacked AudioContext. Physical iPhone Safari playback, phone background behaviour and Bluetooth latency unverified.
+Native iOS: plist and entitlement structure checked. No Apple SDK, Xcode signing or device test on this Windows host.

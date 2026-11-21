@@ -1,0 +1,30 @@
+# 构建产物
+/Windows/
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.pdb
+*.user
+*.suo
+.vs/
+
+# Android 构建中间物与签名密钥
+src/android/build/
+*.jks
+*.keystore
+classes.jar
+
+# iOS
+*.xcworkspace/
+xcuserdata/
+*.ipa
+DerivedData/
+
+# 工具与本地产物
+*.log
+Thumbs.db
+desktop.ini
+.DS_Store

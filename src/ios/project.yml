@@ -1,0 +1,42 @@
+name: SoundMesh
+options:
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    PRODUCT_FAMILY_ID: org.example.soundmesh
+    APP_GROUP_ID: group.$(PRODUCT_FAMILY_ID)
+targets:
+  SoundMesh:
+    type: application
+    platform: iOS
+    sources:
+      - path: Phone
+        excludes: [Info.plist]
+      - path: Shared
+        excludes: [Group.entitlements]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_FAMILY_ID)
+        INFOPLIST_FILE: Phone/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Shared/Group.entitlements
+    dependencies:
+      - target: Broadcast
+        embed: true
+  Broadcast:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Broadcast
+        excludes: [Info.plist]
+      - path: Shared
+        excludes: [Group.entitlements]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_FAMILY_ID).Broadcast
+        INFOPLIST_FILE: Broadcast/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Shared/Group.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
