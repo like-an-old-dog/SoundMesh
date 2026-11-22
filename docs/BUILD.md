@@ -88,7 +88,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 - 换一个构建目录 = 换一把新密钥 = **无法覆盖安装**已签名的版本，必须先卸载。
 - 想长期分发，请把 `prototype.jks` 换成你自己的密钥库，并妥善保存。
 
-`AndroidManifest.xml` 里的 `versionCode` / `versionName` 需要手动改：当前为 `5` / `1.1.0`。
+`AndroidManifest.xml` 里的 `versionCode` / `versionName` 需要手动改：当前为 `6` / `1.2.0`。
 
 ---
 
@@ -150,15 +150,15 @@ Windows 客户端通过 `<ApplicationIcon>SoundMesh.ico</ApplicationIcon>` 与�
 
 ## 打包发布
 
-1.1 的发布产物是四个文件，均由上面的构建流程产生：
+1.2 的发布产物是四个文件，均由上面的构建流程产生：
 
 | 文件 | 来源 |
 | --- | --- |
-| `SoundMesh-Windows-1.1.zip` | `Windows/` 目录（两个 exe + `THIRD-PARTY/` + README）整包压缩 |
-| `SoundMesh-Android-1.1.apk` | `build.ps1` 输出，重命名 |
-| `SoundMesh-Source-1.1.zip` | `src/` + `THIRD-PARTY/` + 文档，不含构建产物 |
+| `SoundMesh-Windows-1.2.zip` | `Windows/` 目录（两个 exe + `THIRD-PARTY/` + README）整包压缩 |
+| `SoundMesh-Android-1.2.apk` | `build.ps1` 输出，重命名 |
+| `SoundMesh-Source-1.2.zip` | `src/` + `THIRD-PARTY/` + 文档，不含构建产物 |
 
-发布前请确认：`src/android/AndroidManifest.xml` 的版本号已更新、`docs/TEST-RESULTS-1.1.txt` 是最新一次验证的日志、SHA256 已重新计算。
+发布前请确认：`src/android/AndroidManifest.xml` 的版本号已更新、`docs/TEST-RESULTS-1.2.txt` 是最新一次验证的日志、SHA256 已重新计算。
 
 ---
 

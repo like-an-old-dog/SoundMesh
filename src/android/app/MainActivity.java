@@ -64,7 +64,7 @@ public final class MainActivity extends Activity {
         options=card("输出和延迟");focus=button("把监听切到本机");options.addView(focus);focus.setOnClickListener(v->{AudioService s=AudioService.current;if(s!=null)s.listenHere();});
         monitor=new CheckBox(this);monitor.setText("在本机监听");monitor.setChecked(true);options.addView(monitor);
         monitor.setOnCheckedChangeListener((v,checked)->{AudioService s=AudioService.current;if(s!=null)s.monitor=checked;});
-        Button buffer=button("播放缓冲");options.addView(buffer);buffer.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("播放缓冲").setItems(new String[]{"灵敏 · 25 ms","均衡 · 70 ms","稳定 · 90 ms"},(d,i)->{AudioService s=AudioService.current;if(s!=null)s.setBuffer(new int[]{25,70,90}[i]);}).show());
+        buffer=button("播放缓冲 · 同步 150 ms");options.addView(buffer);buffer.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("播放缓冲").setItems(new String[]{"灵敏 · 25 ms","均衡 · 70 ms","稳定 · 90 ms","同步 · 100 ms","同步 · 150 ms","同步 · 200 ms"},(d,i)->{AudioService s=AudioService.current;if(s!=null){int ms=new int[]{25,70,90,100,150,200}[i];s.setBuffer(ms);buffer.setText("播放缓冲 · "+(ms>=100?"同步 ":"")+ms+" ms");}}).show());
         count=text("",12,false);mixCard.addView(count);list=column();mixCard.addView(list);
     }
     void authorize(){if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},101);else requestCapture();}
@@ -106,6 +106,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume(){super.onResume();handler.post(update);}
     @Override protected void onPause(){handler.removeCallbacks(update);super.onPause();}
     boolean notificationAsked;
+    private Button buffer;
     void refresh(){
         AudioService s=AudioService.current;boolean active=s!=null&&"融合".equals(s.mode);
         boolean rx=active,tx=active;
@@ -132,10 +133,10 @@ public final class MainActivity extends Activity {
         if(startScan)discover();
         show(info,active?(s.monitor?"正在本机监听":"等待接管监听")+"   ·   "+s.sources.size()+" 台远端设备":lastError.isEmpty()?"连接同一局域网内的手机和电脑。":lastError);
         if(active&&section==1)show(pairSummary,"本机地址  "+Lan.primary()+"\n配对码  "+s.code);
-        if(rx){localControls.sync(s);int value=Math.round(s.master*100);if(!master.isPressed()&&master.getProgress()!=value)master.setProgress(value);show(masterValue,"远端混音总音量 "+value+"%");monitor.setChecked(s.monitor);}
+        if(rx){show(buffer,"播放缓冲 · "+(s.prebufferMs>=100?"同步 ":"")+s.prebufferMs+" ms");localControls.sync(s);int value=Math.round(s.master*100);if(!master.isPressed()&&master.getProgress()!=value)master.setProgress(value);show(masterValue,"远端混音总音量 "+value+"%");monitor.setChecked(s.monitor);}
         List<AudioService.Remote> current=active?new ArrayList<>(s.sources):Collections.emptyList();
         for(AudioService.Remote r:new ArrayList<>(rows.keySet()))if(!current.contains(r))list.removeView(rows.remove(r).view);
-        for(AudioService.Remote r:current){DeviceRow row=rows.get(r);if(row==null){row=new DeviceRow(r);rows.put(r,row);list.addView(row.view);}row.sync(r);show(row.status,r.host+" · "+r.status+" · 缓冲 "+r.ring.bufferMs()+" ms · 断流 "+r.ring.underruns()+" 次");row.meter.setProgress(Math.round(r.level*100));}
+        for(AudioService.Remote r:current){DeviceRow row=rows.get(r);if(row==null){row=new DeviceRow(r);rows.put(r,row);list.addView(row.view);}row.sync(r);show(row.status,r.host+" · "+r.status+" · 缓冲 "+(r.timed&&s.prebufferMs>=100?r.timeline.aheadMs():r.ring.bufferMs())+" ms · 断流 "+(r.timed&&s.prebufferMs>=100?r.timeline.gaps:r.ring.underruns())+" 次");row.meter.setProgress(Math.round(r.level*100));}
         show(count,current.isEmpty()?"远端设备 · 尚未连接":"远端设备 · "+current.size()+" 台");
     }
     void show(TextView label,String value){if(!value.contentEquals(label.getText()))label.setText(value);}

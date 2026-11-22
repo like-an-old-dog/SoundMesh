@@ -4,12 +4,12 @@
 
 **把同一个局域网里几台设备的声音，汇到一副耳机里。**
 
-Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时收发，48 kHz / 16 bit 立体声
+Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时收发，多路时间戳同步，48 kHz / 16 bit 立体声
 
 [![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-1c1f43?style=flat-square)](#平台支持)
 [![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-1c1f43?style=flat-square)](#音质延迟与带宽)
-[![Status](https://img.shields.io/badge/status-1.1%20release-4c43c1?style=flat-square)](#已知限制)
+[![Status](https://img.shields.io/badge/status-1.2%20release-4c43c1?style=flat-square)](#已知限制)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-8b3a3a?style=flat-square)](NOTICE.md)
 
 [快速开始](#快速开始) · [功能](#能做什么) · [工作原理](#工作原理) · [构建](#从源码构建) · [已知限制](#已知限制) · [English](README.en.md)
@@ -26,9 +26,12 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 
 1.1 起每台设备只有一种模式：**「开始融合」= 同时把本机声音发出去、同时接收别人的声音**。之前版本要在「共享 / 监听」之间切换，现在两端点同一个按钮，配对一次就双向通了。
 
+1.2 再往前一步：**时间戳同步播放**。发送端给每帧打上采集时刻，接收端把所有远端通道放进同一条播放时间轴，几台设备的声音不再各差几十毫秒，混在一起也不会互相错位。
+
 - 🎧 **一副耳机听所有设备**——耳机在电脑上，手机声音也进电脑；耳机在手机上，电脑声音也进手机。
 - 🎚️ **四层音量**——每台远端设备、其他设备合计、本机发送、本机应用（Windows 还能按比例压低其他应用的音量）。
 - 📱 **系统媒体卡片联动**——Android 下拉通知栏拖动媒体进度条就是远端混音总音量，轻点展开完整调音面板。
+- 🕒 **多路对齐播放**——各远端通道按统一时间轴取样，单路迟到只丢它自己的一段，不拖累其他通道。
 - 🌐 **iPhone 免安装试听**——Safari 扫码即听，无需 IPA、无需开发者签名。
 
 > 没有账号、没有云端、没有中转服务器：音频帧只在局域网内从发送端直连到接收端。链路是**明文**的，请只在可信网络使用。
@@ -65,7 +68,7 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 
 **发送端不会把自己的混音送回去。** Windows 用独立的 `SoundMeshCapture.exe` 做 WASAPI 进程回环，并排除声汇自身的进程树；Android 用 `AudioPlaybackCapture` 的 UID 排除。否则 A 听到的 B 会被再次编码发回 B，形成回声。
 
-**缓冲是自适应的。** 起始缓冲按档位设置（灵敏 25 ms / 均衡 70 ms / 稳定 90 ms），一旦断流临时抬高，稳定后再回落，上限 160 ms。积压时丢弃旧样本而不是越堆越慢——延迟不会随时间增长，代价是极端抖动下会有一次轻微断音。
+**同步播放与独立缓冲是两套机制。** 两端都是 1.2 时走时间戳协议：连接时用 5 次往返取最短 RTT 校时，之后每分钟复测；接收端按统一播放时间（同步 100 / 150 / 200 ms，默认 150 ms）从时间轴取各通道样本，多台设备因此天然对齐。与旧版本或 iPhone 网页连接时自动回退到**独立缓冲**：起始 25 / 70 / 90 ms，断流时临时抬高，上限 160 ms；积压就丢旧样本——延迟不会随时间增长，代价是极端抖动下会有一次轻微断音。
 
 ---
 
@@ -89,8 +92,8 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 ### 你需要
 
 - 两台以上设备接在**同一个** Wi-Fi / 有线局域网，且彼此能互相访问（访客 Wi-Fi、AP 隔离、企业网络常见地不行）。
-- Windows：解压整个 `SoundMesh-Windows-1.1.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` **留在同一目录**。
-- Android：安装 `SoundMesh-Android-1.1.apk`。
+- Windows：解压整个 `SoundMesh-Windows-1.2.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` **留在同一目录**。
+- Android：安装 `SoundMesh-Android-1.2.apk`。
 
 ### 三步连起来
 
@@ -138,8 +141,8 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 | 采样格式 | 48 000 Hz，16 bit，立体声 |
 | 音频帧 | 10 ms / 帧（1920 字节） |
 | 单路码率 | ≈ **1.54 Mbps** + 协议开销 |
-| 可选起始缓冲 | 25 ms（灵敏） / 70 ms（均衡，默认） / 90 ms（稳定） |
-| 自适应上限 | 160 ms |
+| 同步播放缓冲 | 100 / 150（默认） / 200 ms，按统一时间轴对齐多路 |
+| 独立缓冲（旧设备 / 网页） | 起始 25 / 70 / 90 ms，断流自适应，上限 160 ms |
 | 断线重试 | 1 → 2 → 4 → 8 s 指数退避 |
 | 并发路数 | 协议不设上限；实测混音 66 路不削波，真实容量取决于网络与设备 |
 
@@ -173,8 +176,10 @@ flowchart LR
 | 用途 | 端口 | 形式 |
 | --- | --- | --- |
 | 设备发现 | UDP 49633 | 广播 `SOUNDMESH FIND 2`，应答 `SM2\|<id>\|<name>` |
-| 音频传输 | TCP 49632 | 明文握手 `SOUNDMESH2 <pin> [<reversePin>]` → `OK 48000 2`，随后为定长 PCM 帧 |
-| 监听接管 | TCP 49632 | `SM2-FOCUS <pin>` → `OK FOCUS`，通知对端暂停监听 |
+| 时间戳音频 | TCP 49632 | SOUNDMESH3 <pin> [<reversePin>] → OK TIME3，随后 5 次 PING 校时；帧为 1928 字节（8 字节时间戳 + 1920 字节 PCM） |
+| 兼容音频 | TCP 49632 | SOUNDMESH2 <pin> → OK 48000 2，1920 字节纯 PCM 帧，接收端独立缓冲 |
+| 监听接管 | TCP 49632 | SM2-FOCUS <pin> → OK FOCUS，通知对端暂停监听 |
+| 时钟复测 | TCP 49632 | 短连接 CLOCK，对端应答 5 次校时 |
 | iPhone 桥接 | TCP 49634 | HTTP 静态资源 + 带令牌的 WebSocket，令牌只存在于 URL fragment |
 
 配对码是设备本地生成并持久化的 8 位数字（Windows 存于 `HKCU\Software\SoundMesh\Pairing`）。二维码内容是 `soundmesh://pair/<ip>/<pin>/<id>`，扫描不经过任何第三方服务。
@@ -213,16 +218,17 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## 测试与验证
 
-日志见 [docs/TEST-RESULTS-1.1.txt](docs/TEST-RESULTS-1.1.txt)。要点：
+日志见 [docs/TEST-RESULTS-1.2.txt](docs/TEST-RESULTS-1.2.txt)。要点：
 
-- **23 项 C# 检查通过**：预缓冲、PCM 有符号转换、积压上限、陈旧样本丢弃、欠载静音、逐路/总/发送增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
+- **28 项 C# 检查通过**：预缓冲、PCM 有符号转换、积压上限、陈旧样本丢弃、欠载静音、逐路/总/发送增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
 - 新增的**发送侧音量**在 Java 与 C# 两侧都验证了：只影响出站信号，不改变远端混音；能把出站压到静音。
+- **同步与对齐**：两路来源在 100 / 150 / 200 ms 缓冲下，即使其中一路反复出现 80 ms 突发停顿，混音输出仍逐样本对齐；迟到片段被跳过且下一秒有效片段能恢复；重连会清掉旧时间轴。
 - **跨语言互通**：Android Java 编解码器 ↔ C# 发送端/接收端，分片流、断连检测、强制重连后混音设置与双向提议都保留。
 - **Android 12L 模拟器**：签名 APK 覆盖安装到 1.0 成功；系统媒体卡片实际拖动把混音从 80 改到 37 并由媒体会话上报；轻点卡片打开音量面板；横屏紧凑布局会隐藏系统进度条。
 - **Windows**：发布版 x64 二进制带多分辨率图标；热键注册与 `WM_HOTKEY` 派发正常，主窗口与小窗滑杆双向同步；进程排除采集连续 30 帧；WASAPI → 本地 TCP 接收端。
-- **互通**：Windows 音频引擎与 1.1 Android 客户端在设备页配对，双向交换 500 帧并确认监听接管。
+- **互通**：Windows 音频引擎与 1.2 Android 客户端配对，带时间戳双向交换 500 帧，反向连接、校时、时间轴缓冲与监听接管都验证通过；APK 与 1.1 同签名并覆盖安装成功。
 
-旧版日志保留在 [docs/TEST-RESULTS-0.3.txt](docs/TEST-RESULTS-0.3.txt)。
+旧版日志保留在 [docs/TEST-RESULTS-1.1.txt](docs/TEST-RESULTS-1.1.txt)。
 
 ---
 
@@ -230,6 +236,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 **1.1 是正式版，但仍有明确的边界。**
 
+- ⚠️ **同步只作用于参与声汇的远端音轨**：本机其他应用、iPhone 网页与旧版本设备不参与时间戳对齐，各自走独立缓冲。
 - ⚠️ **iPhone 只验证到链路层**：网页播放链路在桌面 Chromium 上通过，实体 iPhone Safari 的实际播放、后台行为、蓝牙延迟尚未验证。
 - ⚠️ **iOS 原生版是上一版开发稿**：只有源码与工程描述，没有编译、签名或装机测试。
 - ⚠️ **未测量项**：各厂商 OEM 通知栏布局、真实声学输出电平、蓝牙多点耳机仲裁、Wi-Fi 抖动与端到端延迟。
@@ -245,6 +252,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 - [ ] iPhone Safari 真机验证，补齐 Web Audio 自动播放策略
 - [ ] iOS 原生版：签名流程、TestFlight 分发、ReplayKit 采集验证
 - [ ] 三设备拓扑与蓝牙多点耳机接管的实机测试
+- [ ] 测量真实采集到耳机的端到端延迟，而不只是应用层补偿
 - [ ] 可选的链路加密（仍然不依赖服务器）
 - [ ] 安装包体积优化（Windows 单文件自包含 ≈ 190 MB）
 

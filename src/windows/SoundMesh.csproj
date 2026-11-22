@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
-    <Version>1.1.0</Version><ApplicationIcon>SoundMesh.ico</ApplicationIcon><AssemblyName>SoundMesh</AssemblyName><ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>1.2.0</Version><ApplicationIcon>SoundMesh.ico</ApplicationIcon><AssemblyName>SoundMesh</AssemblyName><ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup><PackageReference Include="NAudio" Version="2.2.1" /><PackageReference Include="ZXing.Net" Version="0.16.11" /></ItemGroup>
   <ItemGroup>

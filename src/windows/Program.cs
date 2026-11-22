@@ -90,10 +90,10 @@ sealed partial class MainForm : Form {
         var sound=Line();var incomingLabel=Caption("其他设备合计   80%");AlignChannel(incomingLabel,master);sound.Controls.AddRange([incomingLabel,master]);mix.Controls.Add(sound);
         master.ValueChanged+=(_,_)=>incomingLabel.Text="其他设备合计   "+master.Value+"%";
         var tuning=Line();tuning.Controls.Add(Caption("播放缓冲"));tuning.Controls.Add(profile);routing.Controls.Add(tuning);
-        profile.Items.AddRange(["灵敏 · 25 ms","均衡 · 70 ms","稳定 · 90 ms"]);profile.SelectedIndex=1;
-        profile.SelectedIndexChanged+=(_,_)=>{foreach(var r in channels)r.source.Ring.PrebufferMs=BufferMs;};
+        profile.Items.AddRange(["灵敏 · 25 ms","均衡 · 70 ms","稳定 · 90 ms","同步 · 100 ms","同步 · 150 ms","同步 · 200 ms"]);profile.SelectedIndex=4;
+        profile.SelectedIndexChanged+=(_,_)=>{if(mixer!=null)mixer.DelayMs=SyncDelay;foreach(var r in channels)r.source.Ring.PrebufferMs=BufferMs;};
         master.ValueChanged+=(_,_)=>SetGain();mix.Controls.Add(summary);mix.Controls.Add(strips);body.Controls.Add(status);
-        timer.Tick+=(_,_)=>{SyncQuick();if(localGain.Value!=100){try{localApps.Refresh();}catch(Exception e){Tell(e.Message);}}foreach(var r in channels){r.info.Text=r.source.Status+"   ·   缓冲 "+r.source.Ring.BufferMs+" ms · 断流 "+r.source.Ring.Underruns+" 次";r.meter.Value=Math.Clamp((int)(r.source.Level*100),0,100);}
+        timer.Tick+=(_,_)=>{SyncQuick();if(localGain.Value!=100){try{localApps.Refresh();}catch(Exception e){Tell(e.Message);}}foreach(var r in channels){r.info.Text=r.source.Status+"   ·   缓冲 "+(r.source.Timestamped&&SyncDelay>0?r.source.Timeline.AheadMs:r.source.Ring.BufferMs)+" ms · 断流 "+(r.source.Timestamped&&SyncDelay>0?r.source.Timeline.Gaps:r.source.Ring.Underruns)+" 次";r.meter.Value=Math.Clamp((int)(r.source.Level*100),0,100);}
             summary.Text=channels.Count==0?"还没有远端通道":"远端设备   "+channels.Count+" 台";
             if(sender!=null)sendState.Text="配对码  "+sender.Code+"      已接入 "+sender.ClientCount+" 台    "+advertiseIssue+sender.Error;
         };
@@ -101,6 +101,7 @@ sealed partial class MainForm : Form {
         InstallNavigation(mix);
         Shown+=(_,_)=>UpdateSession();FormClosing+=(_,_)=>{closing=true;StopSession();timer.Stop();};timer.Start();
     }
+    int SyncDelay=>profile.SelectedIndex switch{3=>100,4=>150,5=>200,_=>0};
     int BufferMs=>profile.SelectedIndex switch{0=>25,2=>90,_=>70};
     void UpdateSession(){
         bool active=sender!=null;
@@ -149,11 +150,11 @@ sealed partial class MainForm : Form {
         var session=sender;
         if(!IPAddress.TryParse(ip,out var addr)||addr.AddressFamily!=AddressFamily.InterNetwork||IPAddress.IsLoopback(addr)||Lan.Routes().Any(r=>r.ip.Equals(addr))||!Regex.IsMatch(key,"^[0-9]{8}$")){Tell("请检查对端 IPv4 地址和 8 位配对码");return;}
         if(channels.Any(c=>c.source.Address==ip)||!pending.Add(ip))return;
-        var source=new RemoteAudio(name,ip){ReverseCode=reverse?sender?.Code:null};
+        var source=new RemoteAudio(name,ip){PreferTimestamps=true,ReverseCode=reverse?sender?.Code:null};
         source.Ring.PrebufferMs=BufferMs;
         try {
             await source.Start(key);if(closing||session!=sender){source.Dispose();return;}
-            mixer??=new NetworkMixer();SetGain();mixer.Add(source);AddStrip(source);
+            mixer??=new NetworkMixer();mixer.DelayMs=SyncDelay;SetGain();mixer.Add(source);AddStrip(source);
             if(peerId!=null)Lan.Save("peer."+peerId,key);status.Text="已连接 "+name;
         }catch(Exception e){source.Dispose();if(e is InvalidDataException&&peerId!=null)Lan.Save("peer."+peerId,"");Tell("连接失败 "+e.Message+"。请确认在同一局域网，电脑防火墙允许声汇通过专用网络。");}
         finally{pending.Remove(ip);}

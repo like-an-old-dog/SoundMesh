@@ -6,25 +6,56 @@ using SoundMesh;
 
 if(args.Length==3 && args[0]=="--duplex-emulator"){
     using var session=new AudioSender{Code="12345678"};
-    using var mixer=new NetworkMixer(false);
+    using var mixer=new NetworkMixer(false){DelayMs=150};
     var reverse=new TaskCompletionSource<string>();
     session.ReverseRequested=(_,pin)=>reverse.TrySetResult(pin);
     session.Start(true,args[2]);
     Console.WriteLine("READY");
     var key=await reverse.Task.WaitAsync(TimeSpan.FromSeconds(80));
-    using var input=new RemoteAudio("Emulator via ADB","127.0.0.1",int.Parse(args[1]));
+    using var input=new RemoteAudio("Emulator via ADB","127.0.0.1",int.Parse(args[1])){PreferTimestamps=true};
     await input.Start(key);mixer.Add(input);
     using var timeout=new CancellationTokenSource(15000);
     var frame=new float[960];
     while(input.FramesReceived<500){mixer.Read(frame,0,frame.Length);await Task.Delay(10,timeout.Token);}
     if(session.ClientCount!=1||session.Error!="")throw new Exception("Duplex send path interrupted");
+    if(!input.Timestamped||input.Timeline.AheadMs<=0)throw new Exception("Timestamp alignment unavailable");
     await input.YieldPeer();
-    Console.WriteLine("PASS Windows isolated sender and Android Beta exchanged audio simultaneously for 500 inbound frames; authenticated monitor handoff acknowledged");
+    Console.WriteLine("PASS Windows isolated sender and Android exchanged clock-aligned audio simultaneously for 500 inbound frames; authenticated monitor handoff acknowledged");
     return;
 }
 int passed = 0;
 void Check(bool condition, string label) { if (!condition) throw new Exception("FAIL " + label); Console.WriteLine("PASS " + label); passed++; }
 byte[] Pcm(short value) { var b = new byte[Wire.FrameBytes]; for (int i = 0; i < b.Length; i += 2) { b[i] = (byte)value; b[i + 1] = (byte)(value >> 8); } return b; }
+foreach(int delayMs in new[]{100,150,200}){
+    using var mix=new NetworkMixer(false){DelayMs=delayMs,Master=1};
+    var first=new RemoteAudio("A","127.0.0.1"){Timestamped=true,Gain=1};
+    var second=new RemoteAudio("B","127.0.0.1"){Timestamped=true,Gain=1};
+    mix.Add(first);mix.Add(second);
+    var rendered=new float[960];int sent=0;
+    for(int tick=0;tick<400;tick++){
+        long now=10000000L+tick*10000;
+        first.Timeline.Push(now,Pcm((short)(1000+tick)));
+        if(tick%50>=8){
+            while(sent<=tick){second.Timeline.Push(10000000L+sent*10000,Pcm((short)(4000+sent)));sent++;}
+        }
+        mix.ReadAt(rendered,0,rendered.Length,now);
+        if(tick>=delayMs/10){
+            float expected=(5000+2*(tick-delayMs/10))/32768f;
+            if(rendered.Any(x=>x!=expected))throw new Exception("timeline mismatch at "+tick+" delay "+delayMs);
+        }
+    }
+    Check(second.Timeline.Gaps==0,$"two sources remain sample-aligned through 80ms bursts at {delayMs}ms");
+}
+{
+    var timeline=new Timeline();var dest=new float[960];long baseUs=10000000;
+    timeline.Push(baseUs,Pcm(1000));timeline.Push(baseUs+10000,Pcm(2000));
+    timeline.Read(baseUs*48/1000,dest,960);timeline.Read(baseUs*48/1000+480,dest,960);
+    timeline.Push(baseUs+20000,Pcm(3000));timeline.Push(baseUs+30000,Pcm(4000));
+    timeline.Read((baseUs+20000)*48/1000,dest,960);
+    Check(timeline.Late==1&&timeline.Gaps==1&&dest.All(x=>x==3000/32768f),"late packet skipped and next valid slot recovered");
+    timeline.Reset();timeline.Read((baseUs+20000)*48/1000,dest,960);
+    Check(dest.All(x=>x==0),"reconnect clears old timeline audio");
+}
 var signedStereo=Pcm(-12000);
 for(int i=2;i<signedStereo.Length;i+=4){signedStereo[i]=0x60;signedStereo[i+1]=0x09;}
 AudioSender.ScalePcm(signedStereo,25);

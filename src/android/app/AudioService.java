@@ -29,14 +29,14 @@ public final class AudioService extends Service {
     private ServerSocket listener;
     private DatagramSocket discovery;
     private Lan lan;
-    public volatile int prebufferMs=70;
+    public volatile int prebufferMs=150;
     private android.media.session.MediaSession mediaSession;
     private VolumeProvider volumeProvider;
     private final SourceGain localSource=new SourceGain();
     public int localPercent(){return localSource.percent();}
     public void setLocalPercent(int value){localSource.set(value);}
     private android.net.wifi.WifiManager.WifiLock wifiLock;
-    public void setBuffer(int ms){prebufferMs=ms;for(Remote remote:sources)remote.ring.prebufferMs=ms;}
+    public void setBuffer(int ms){prebufferMs=ms;for(Remote remote:sources)remote.ring.prebufferMs=ms>=100?70:ms;}
     private PowerManager.WakeLock wake;
     private final Handler main=new Handler(Looper.getMainLooper());
 
@@ -138,6 +138,7 @@ public final class AudioService extends Service {
         if(recorder.getState()!=AudioRecord.STATE_INITIALIZED)throw new IOException("此设备无法初始化声音采集");
         listener=new ServerSocket();listener.setReuseAddress(true);listener.bind(new InetSocketAddress(PORT));
         code=lan.pin;
+        final Timeline.FrameClock frameClock=new Timeline.FrameClock();
         running=true;mode="发送";status="发送已开启";recorder.startRecording();
         workers.execute(()->accept());
         try{discovery=new DatagramSocket(Lan.PORT);workers.execute(()->{try{lan.advertise(discovery);}catch(Exception ignored){}});}catch(SocketException e){status="发现端口忙，请使用二维码";}
@@ -148,10 +149,12 @@ public final class AudioService extends Service {
                     byte[] frame=new byte[FRAME];int n=0;
                     while(n<FRAME&&running) { int got=recorder.read(frame,n,FRAME-n,AudioRecord.READ_BLOCKING);if(got<0)throw new IOException("声音采集错误 "+got);n+=got; }
                     if(!running)break;
+                    long stamp=frameClock.stamp(Timeline.nowUs()-10000);
                     localSource.apply(frame);
+                    byte[] packet=java.nio.ByteBuffer.allocate(FRAME+8).putLong(stamp).put(frame).array();
                     for(Subscriber s:subscribers) {
                         if(s.blockedAt>0&&System.currentTimeMillis()-s.blockedAt>15000){s.close();continue;}
-                        if(!s.frames.offer(frame)){s.frames.poll();s.frames.offer(frame);}
+                        if(!s.frames.offer(packet)){s.frames.poll();s.frames.offer(packet);}
                     }
                 }
             }catch(Exception e){fail("音频发送停止："+e.getMessage());}
@@ -177,16 +180,20 @@ public final class AudioService extends Service {
             if(hello.length==2&&hello[0].equals("SM2-FOCUS")&&hello[1].equals(code)){
                 monitor=false;out.write("OK FOCUS\n".getBytes("US-ASCII"));return;
             }
-            if(hello.length<2||hello.length>3||!hello[0].equals("SOUNDMESH2")||!hello[1].equals(code)){
+            boolean timed=hello[0].equals("SOUNDMESH3");
+            if(hello.length==2&&hello[0].equals("SM3-CLOCK")&&hello[1].equals(code)){
+                Wire.send(out,"CLOCK");Wire.respond(in,out);return;
+            }
+            if(hello.length<2||hello.length>3||(!timed&&!hello[0].equals("SOUNDMESH2"))||!hello[1].equals(code)){
                 synchronized(attempts){attempts.computeIfAbsent(ip,k->new ArrayDeque<>()).add(now);}
                 out.write("ERR\n".getBytes("US-ASCII"));return;
             }
-            out.write("OK 48000 2\n".getBytes("US-ASCII"));
+            Wire.send(out,timed?"OK TIME3":"OK 48000 2");if(timed)Wire.respond(in,out);
             if(hello.length==3&&hello[2].matches("[0-9]{8}"))main.post(()->{if(running)connect(ip,hello[2],ip,false,null);});
-            sub=new Subscriber(socket);subscribers.add(sub);
+            sub=new Subscriber(socket,timed);subscribers.add(sub);
             while(running&&!socket.isClosed()) {
-                byte[] frame=sub.frames.poll(400,TimeUnit.MILLISECONDS);if(frame==null)frame=new byte[FRAME];
-                sub.blockedAt=System.currentTimeMillis();out.write(frame);sub.blockedAt=0;
+                byte[] frame=sub.frames.poll(400,TimeUnit.MILLISECONDS);if(frame==null)frame=java.nio.ByteBuffer.allocate(FRAME+8).putLong(Timeline.nowUs()-10000).array();
+                sub.blockedAt=System.currentTimeMillis();out.write(frame,timed?0:8,timed?FRAME+8:FRAME);sub.blockedAt=0;
             }
         }catch(Exception ignored){}
         finally {if(sub!=null)subscribers.remove(sub);try{socket.close();}catch(Exception ignored){}}
@@ -203,6 +210,7 @@ public final class AudioService extends Service {
             short[] pcm=new short[SAMPLES];MixBus mixer=new MixBus();
             try {
                 while(running) {
+                    mixer.delayMs=prebufferMs;
                     if(!monitor){
                         if(output.getPlayState()==AudioTrack.PLAYSTATE_PLAYING){output.pause();output.flush();}
                         mixer.render(sources,0,pcm);Thread.sleep(10);continue;
@@ -217,18 +225,28 @@ public final class AudioService extends Service {
     private void connect(String host,String pin,String name,boolean requestReverse,String peer) {
         for(Remote other:sources)if(other.host.equals(host))return;
         Remote r=new Remote(host,name==null||name.trim().isEmpty()?host:name.trim());
-        r.ring.prebufferMs=prebufferMs;r.pin=pin;sources.add(r);
+        r.ring.prebufferMs=prebufferMs>=100?70:prebufferMs;r.pin=pin;sources.add(r);
         workers.execute(()->{
-            int wait=1;
+            int wait=1;boolean tryTimed=true;
             while(running&&!r.removed) {
                 try(Socket socket=new Socket()) {
                     r.socket=socket;
                     if(r.removed)break;
-                    Wire.connect(socket,host,pin,requestReverse?code:null);
+                    if(tryTimed){
+                        try {r.offsetUs=Wire.connectTimed(socket,host,pin,requestReverse?code:null);}
+                        catch(ProtocolException old){tryTimed=false;continue;}
+                    }else Wire.connect(socket,host,pin,requestReverse?code:null);
+                    r.timed=tryTimed;
+                    if(tryTimed)workers.execute(()->refreshClock(r,socket));
+                    r.timeline.reset();
                     if(peer!=null)lan.prefs.edit().putString("peer."+peer,pin).apply();
-                    r.ring.reset();r.status="已连接 · 立体声";byte[] frame=new byte[FRAME];
-                    InputStream in=socket.getInputStream();
-                    while(running&&!r.removed){Wire.frame(in,frame);r.ring.push(frame);wait=1;}
+                    r.ring.reset();r.status=r.timed?"已校时 · 立体声":"兼容模式 · 独立缓冲";byte[] frame=new byte[FRAME];
+                    DataInputStream in=new DataInputStream(socket.getInputStream());
+                    while(running&&!r.removed){
+                        long stamp=r.timed?in.readLong():0;Wire.frame(in,frame);
+                        if(r.timed)r.timeline.push(stamp+r.offsetUs,frame);
+                        r.ring.push(frame);wait=1;
+                    }
                 }catch(ProtocolException e){r.status=e.getMessage();if(peer!=null)lan.prefs.edit().remove("peer."+peer).apply();break;}
                 catch(Exception e){if(!running||r.removed)break;r.status="连接中断 · "+wait+" 秒后重试";}
                 r.level=0;
@@ -236,6 +254,21 @@ public final class AudioService extends Service {
                 wait=Math.min(8,wait*2);
             }
         });
+    }
+    private void refreshClock(Remote r,Socket session){
+        while(running&&!r.removed && r.socket==session && !session.isClosed()){
+            try{
+                Thread.sleep(60000);
+                if(!running||r.removed||r.socket!=session||session.isClosed())return;
+                try(Socket probe=new Socket()){
+                    probe.setTcpNoDelay(true);probe.connect(new InetSocketAddress(r.host,PORT),4000);probe.setSoTimeout(4000);
+                    Wire.send(probe.getOutputStream(),"SM3-CLOCK "+r.pin);
+                    if(!Wire.line(probe.getInputStream()).equals("CLOCK"))return;
+                    long measurement=Wire.measure(probe);
+                    if(r.socket==session)r.offsetUs+=Math.max(-2000L,Math.min(2000L,measurement-r.offsetUs));
+                }
+            }catch(InterruptedException done){return;}catch(IOException ignored){}
+        }
     }
     public void listenHere(){
         monitor=true;
@@ -267,14 +300,15 @@ public final class AudioService extends Service {
     }
     @Override public IBinder onBind(Intent intent){return null;}
     public static final class Remote extends MixBus.Input {
+        volatile long offsetUs;
         public final String host,name;private String pin;public volatile Socket socket; public volatile boolean removed;
         public volatile String status="连接中…";
         Remote(String host,String name){this.host=host;this.name=name;}
         void close(){removed=true;try{if(socket!=null)socket.close();}catch(Exception ignored){}}
     }
     private static final class Subscriber {
-        final Socket socket;final ArrayBlockingQueue<byte[]> frames=new ArrayBlockingQueue<>(8);volatile long blockedAt;
-        Subscriber(Socket socket){this.socket=socket;}void close(){try{socket.close();}catch(Exception ignored){}}
+        final Socket socket;final ArrayBlockingQueue<byte[]> frames;volatile long blockedAt;
+        Subscriber(Socket socket,boolean timed){this.socket=socket;frames=new ArrayBlockingQueue<>(timed?128:8);}void close(){try{socket.close();}catch(Exception ignored){}}
     }
 }
 

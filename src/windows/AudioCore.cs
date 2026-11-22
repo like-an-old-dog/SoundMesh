@@ -95,6 +95,10 @@ public sealed class RemoteAudio : IDisposable
         var stream=control.GetStream();await Wire.WriteLine(stream,"SM2-FOCUS "+pairedCode,timeout.Token);
         if(await Wire.Line(stream,timeout.Token)!="OK FOCUS")throw new IOException("对端未开启双向模式");
     }
+    public bool PreferTimestamps {get;init;}
+    public volatile bool Timestamped;
+    public readonly Timeline Timeline=new();
+    long offsetUs;
     public string? ReverseCode {get;set;}
     public RemoteAudio(string name, string address, int port = Wire.Port) { Name = name; Address = address; this.port=port; }
 
@@ -106,6 +110,13 @@ public sealed class RemoteAudio : IDisposable
     }
     async Task<TcpClient> Open(string code)
     {
+        if(PreferTimestamps){
+            try{return await OpenProtocol(code,true).ConfigureAwait(false);}
+            catch(InvalidDataException){/* Old hosts understand the v2 greeting. */}
+        }
+        return await OpenProtocol(code,false).ConfigureAwait(false);
+    }
+    async Task<TcpClient> OpenProtocol(string code,bool timed){
         var socket = new TcpClient { NoDelay = true };
         try
         {
@@ -113,12 +124,13 @@ public sealed class RemoteAudio : IDisposable
             deadline.CancelAfter(6000);
             await socket.ConnectAsync(Address, port, deadline.Token).ConfigureAwait(false);
             var stream = socket.GetStream();
-            var request = "SOUNDMESH2 " + code + (ReverseCode == null ? "" : " " + ReverseCode);
+            var request = (timed?"SOUNDMESH3 ":"SOUNDMESH2 ") + code + (ReverseCode == null ? "" : " " + ReverseCode);
             await Wire.WriteLine(stream, request, deadline.Token).ConfigureAwait(false);
-            if(await Wire.Line(stream, deadline.Token).ConfigureAwait(false) != "OK 48000 2")
+            if(await Wire.Line(stream, deadline.Token).ConfigureAwait(false) != (timed?"OK TIME3":"OK 48000 2"))
                 throw new InvalidDataException("配对失败，请检查配对码并将两端升级到 0.2");
-            Ring.Reset();
-            Status = "已连接 · 48 kHz 立体声";
+            if(timed)offsetUs=await SyncClock.Measure(stream,deadline.Token).ConfigureAwait(false);
+            Timeline.Reset();Ring.Reset();Timestamped=timed;
+            Status = timed?"已校时 · 立体声":"兼容模式 · 独立缓冲";
             client = socket;
             return socket;
         }
@@ -127,6 +139,7 @@ public sealed class RemoteAudio : IDisposable
     async Task Listen(TcpClient? socket, string code)
     {
         var frame = new byte[Wire.FrameBytes];
+        var timestamp=new byte[8];
         int delay = 1;
         try {
             while (!stop.IsCancellationRequested) {
@@ -134,11 +147,18 @@ public sealed class RemoteAudio : IDisposable
                     socket ??= await Open(code);
                     var stream = socket.GetStream();
                     using var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
-                    while (!stop.IsCancellationRequested) {
+                    using var connected=CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
+                    if(Timestamped)_=RefreshOffset(code,connected.Token,socket);
+                    try{while (!stop.IsCancellationRequested) {
                         deadline.CancelAfter(15000);
+                        if(Timestamped)await stream.ReadExactlyAsync(timestamp,deadline.Token);
                         await stream.ReadExactlyAsync(frame, deadline.Token);
+                        if(Timestamped){
+                            long sourceUs=System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(timestamp);
+                            Timeline.Push(sourceUs+Interlocked.Read(ref offsetUs),frame);
+                        }
                         Ring.Push(frame); FramesReceived++; delay = 1;
-                    }
+                    }}finally{connected.Cancel();}
                 }
                 catch (InvalidDataException) { Status = "配对已变更，请移除并重新配对"; break; }
                 catch (Exception) when (!stop.IsCancellationRequested) {
@@ -149,6 +169,24 @@ public sealed class RemoteAudio : IDisposable
                 delay = Math.Min(8, delay * 2);
             }
         } catch (Exception) when (stop.IsCancellationRequested) { }
+    }
+    async Task RefreshOffset(string code,CancellationToken token,TcpClient session){
+        try{
+            while(!token.IsCancellationRequested){
+                await Task.Delay(60000,token);
+                try {
+                    using var timeout=CancellationTokenSource.CreateLinkedTokenSource(token);timeout.CancelAfter(5000);
+                    using var probe=new TcpClient{NoDelay=true};await probe.ConnectAsync(Address,port,timeout.Token);
+                    var stream=probe.GetStream();await Wire.WriteLine(stream,"SM3-CLOCK "+code,timeout.Token);
+                    if(await Wire.Line(stream,timeout.Token)!="CLOCK")return;
+                    long fresh=await SyncClock.Measure(stream,timeout.Token);
+                    if(!token.IsCancellationRequested&&client==session){
+                        long old=Interlocked.Read(ref offsetUs);
+                        Interlocked.Exchange(ref offsetUs,old+Math.Clamp(fresh-old,-2000L,2000L));
+                    }
+                }catch(Exception) when(!token.IsCancellationRequested){}
+            }
+        }catch(OperationCanceledException){}
     }
     public void Dispose() { stop.Cancel(); client?.Dispose(); Status = "已断开"; }
 }
@@ -161,6 +199,8 @@ public sealed class NetworkMixer : ISampleProvider, IDisposable
     public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(Wire.Rate, 2);
     float[] scratch = new float[8192];
     float limiterGain = 1;
+    public volatile int DelayMs;
+    readonly PlayoutClock clock=new();
     public NetworkMixer(bool play = true)
     {
         if (play)
@@ -178,14 +218,18 @@ public sealed class NetworkMixer : ISampleProvider, IDisposable
     }
     public void Add(RemoteAudio source) { lock (sources) sources.Add(source); }
     public void Remove(RemoteAudio source) { lock (sources) sources.Remove(source); source.Dispose(); }
-    public int Read(float[] buffer, int offset, int count)
+    public int Read(float[] buffer,int offset,int count)=>ReadAt(buffer,offset,count,SyncClock.NowUs);
+    internal int ReadAt(float[] buffer,int offset,int count,long nowUs)
     {
         Array.Clear(buffer, offset, count);
         if (scratch.Length < count) scratch = new float[count];
+        int delay=DelayMs;
+        long start=clock.Advance(nowUs,count/2,delay);
         lock (sources)
             foreach (var s in sources)
             {
-                s.Ring.Read(scratch, count);
+                if(delay>=100&&s.Timestamped)s.Timeline.Read(start,scratch,count);
+                else s.Ring.Read(scratch,count);
                 float level = 0, gain = s.Muted ? 0 : s.Gain;
                 for (int i = 0; i < count; i++) { level = Math.Max(level, Math.Abs(scratch[i])); buffer[offset + i] += scratch[i] * gain; }
                 s.Level = Math.Max(level, s.Level * .8f);
@@ -298,19 +342,24 @@ public sealed class AudioSender : IDisposable
             if(fields.Length==2 && fields[0]=="SM2-FOCUS" && fields[1]==Code && YieldRequested!=null){
                 YieldRequested(); await Wire.WriteLine(stream,"OK FOCUS",handshake.Token);return;
             }
-            if(fields.Length is <2 or >3 || fields[0]!="SOUNDMESH2" || fields[1]!=Code) {
+            bool timed=fields[0]=="SOUNDMESH3";
+            if(fields.Length==2 && fields[0]=="SM3-CLOCK" && fields[1]==Code){
+                await Wire.WriteLine(stream,"CLOCK",handshake.Token);await SyncClock.Respond(stream,handshake.Token);return;
+            }
+            if(fields.Length is <2 or >3 || (!timed&&fields[0]!="SOUNDMESH2") || fields[1]!=Code) {
                 lock(attempts) { if(!attempts.TryGetValue(ip,out var failures)) attempts[ip]=failures=new(); failures.Enqueue(DateTime.UtcNow); }
                 await Wire.WriteLine(stream,"ERR",handshake.Token); return;
             }
-            await Wire.WriteLine(stream, "OK 48000 2", handshake.Token);
+            await Wire.WriteLine(stream,timed?"OK TIME3":"OK 48000 2",handshake.Token);
+            if(timed)await SyncClock.Respond(stream,handshake.Token);
             if(fields.Length==3 && fields[2].Length==8 && fields[2].All(char.IsAsciiDigit)) ReverseRequested?.Invoke(ip,fields[2]);
-            queue = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(8) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true, SingleWriter = true });
+            queue = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(timed?128:8) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true, SingleWriter = true });
             lock (clients) clients.Add(queue);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
             await foreach (var frame in queue.Reader.ReadAllAsync(stop.Token))
             {
                 deadline.CancelAfter(15000);
-                await stream.WriteAsync(frame, deadline.Token);
+                await stream.WriteAsync(frame.AsMemory(timed?0:8), deadline.Token);
             }
         }
         catch { /* Disconnects are isolated to this subscriber. */ }
@@ -333,16 +382,19 @@ public sealed class AudioSender : IDisposable
     async Task Pump(IWaveProvider pcm, BufferedWaveProvider captureBuffer)
     {
         var clock = Stopwatch.StartNew(); double next = 0;
-        bool primed=false;
+        bool primed=false;var frameClock=new FrameClock();
+        var raw=new byte[Wire.FrameBytes];
         try
         {
             while (!stop.IsCancellationRequested)
             {
-                var frame = new byte[Wire.FrameBytes];
+                var frame = new byte[Wire.FrameBytes+8];
                 double queuedMs=captureBuffer.BufferedDuration.TotalMilliseconds;
                 if(queuedMs >= 35)primed=true;
                 if(queuedMs < 10)primed=false;
-                if(primed){pcm.Read(frame,0,frame.Length);ScalePcm(frame,OutboundPercent);}
+                long estimate=SyncClock.NowUs-(long)(Math.Min(400,queuedMs)*1000);
+                System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(frame,frameClock.Stamp(estimate));
+                if(primed){pcm.Read(raw,0,raw.Length);ScalePcm(raw,OutboundPercent);raw.CopyTo(frame,8);}
                 lock (clients) foreach (var queue in clients) queue.Writer.TryWrite(frame);
                 next += 10;
                 double wait = next - clock.Elapsed.TotalMilliseconds;
