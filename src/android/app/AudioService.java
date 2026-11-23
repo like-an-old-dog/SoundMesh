@@ -244,7 +244,7 @@ public final class AudioService extends Service {
                     DataInputStream in=new DataInputStream(socket.getInputStream());
                     while(running&&!r.removed){
                         long stamp=r.timed?in.readLong():0;Wire.frame(in,frame);
-                        if(r.timed)r.timeline.push(stamp+r.offsetUs,frame);
+                        if(r.timed&&!r.timeline.acceptFrame(stamp,r.offsetUs,Timeline.nowUs(),frame))continue;
                         r.ring.push(frame);wait=1;
                     }
                 }catch(ProtocolException e){r.status=e.getMessage();if(peer!=null)lan.prefs.edit().remove("peer."+peer).apply();break;}

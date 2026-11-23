@@ -28,7 +28,10 @@ public final class Wire {
         long best=Long.MAX_VALUE,offset=0;InputStream in=socket.getInputStream();OutputStream out=socket.getOutputStream();
         for(int i=0;i<5;i++){
             long start=Timeline.nowUs();send(out,"PING");
-            long remote=Long.parseLong(line(in));long end=Timeline.nowUs();
+            long remote;
+            try{remote=Long.parseLong(line(in));}catch(NumberFormatException bad){throw new IOException("校时响应无效",bad);}
+            if(remote<0||remote>Long.MAX_VALUE/48)throw new IOException("校时数值越界");
+            long end=Timeline.nowUs();
             if(end-start<best){best=end-start;offset=start+(end-start)/2-remote;}
         }
         return offset;

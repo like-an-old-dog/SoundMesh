@@ -88,7 +88,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 - 换一个构建目录 = 换一把新密钥 = **无法覆盖安装**已签名的版本，必须先卸载。
 - 想长期分发，请把 `prototype.jks` 换成你自己的密钥库，并妥善保存。
 
-`AndroidManifest.xml` 里的 `versionCode` / `versionName` 需要手动改：当前为 `6` / `1.2.0`。
+`AndroidManifest.xml` 里的 `versionCode` / `versionName` 需要手动改：当前为 `7` / `1.2.1`。
 
 ---
 
@@ -127,7 +127,9 @@ open SoundMesh.xcodeproj
 - 超大握手与截断帧被拒绝，错误配对码被拒绝
 - 跨语言互通：`src/tests/WireProbe.java` 与 C# 端互相收发
 
-Android 侧另有一套 JVM 测试（`AudioRing` / `MixBus` / `Wire` 的纯 Java 逻辑），可直接用 `java` 跑，不需要模拟器。
+Android 侧另有一套 JVM 测试（AudioRing / MixBus / Timeline / Wire 的纯 Java 逻辑），可直接用 java 跑，不需要模拟器。
+
+推送到 GitHub 后，.github/workflows/audio-ci.yml 会在 windows-latest 上自动执行：dotnet build 客户端、JVM 音频与时间轴测试、C# 检查、以及跨语言协议测试。
 
 ---
 
@@ -150,15 +152,15 @@ Windows 客户端通过 `<ApplicationIcon>SoundMesh.ico</ApplicationIcon>` 与�
 
 ## 打包发布
 
-1.2 的发布产物是四个文件，均由上面的构建流程产生：
+1.2.1 的发布产物是四个文件，均由上面的构建流程产生：
 
 | 文件 | 来源 |
 | --- | --- |
-| `SoundMesh-Windows-1.2.zip` | `Windows/` 目录（两个 exe + `THIRD-PARTY/` + README）整包压缩 |
-| `SoundMesh-Android-1.2.apk` | `build.ps1` 输出，重命名 |
+| `SoundMesh-Windows-1.2.1.zip` | `Windows/` 目录（两个 exe + `THIRD-PARTY/` + README）整包压缩 |
+| `SoundMesh-Android-1.2.1.apk` | `build.ps1` 输出，重命名 |
 | `SoundMesh-Source-1.2.zip` | `src/` + `THIRD-PARTY/` + 文档，不含构建产物 |
 
-发布前请确认：`src/android/AndroidManifest.xml` 的版本号已更新、`docs/TEST-RESULTS-1.2.txt` 是最新一次验证的日志、SHA256 已重新计算。
+发布前请确认：`src/android/AndroidManifest.xml` 的版本号已更新、`docs/TEST-RESULTS-1.2.1.txt` 是最新一次验证的日志、SHA256 已重新计算。
 
 ---
 

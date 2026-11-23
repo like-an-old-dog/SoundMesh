@@ -155,7 +155,7 @@ public sealed class RemoteAudio : IDisposable
                         await stream.ReadExactlyAsync(frame, deadline.Token);
                         if(Timestamped){
                             long sourceUs=System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(timestamp);
-                            Timeline.Push(sourceUs+Interlocked.Read(ref offsetUs),frame);
+                            if(!Timeline.AcceptFrame(sourceUs,Interlocked.Read(ref offsetUs),SyncClock.NowUs,frame))continue;
                         }
                         Ring.Push(frame); FramesReceived++; delay = 1;
                     }}finally{connected.Cancel();}

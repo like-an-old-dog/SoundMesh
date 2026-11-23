@@ -10,7 +10,7 @@ public static class SyncClock {
         for(int i=0;i<5;i++){
             long start=NowUs;
             await Wire.WriteLine(s,"PING",ct);
-            if(!long.TryParse(await Wire.Line(s,ct),out long remote))throw new InvalidDataException("校时响应无效");
+            if(!long.TryParse(await Wire.Line(s,ct),out long remote)||remote<0||remote>long.MaxValue/48)throw new InvalidDataException("校时响应无效");
             long end=NowUs,rtt=end-start;
             if(rtt<best){best=rtt;offset=start+rtt/2-remote;}
         }
@@ -28,7 +28,10 @@ public sealed class FrameClock {
     long next;
     public long Stamp(long estimate){
         long error=estimate-next;
-        long at=next==0||Math.Abs(error)>50000?estimate:next+Math.Clamp(error,-100,100);
+        // A backward jump indicates capture backlog. Continue from the next audio block.
+        long at = next == 0 || error > 50000 ? estimate
+                : error < -50000 ? next
+                : next + Math.Clamp(error, -100, 100);
         next=at+10000;return at;
     }
 }
@@ -50,12 +53,25 @@ public sealed class Timeline {
     bool seen,missing;
     public long Gaps {get;private set;}
     public long Late {get;private set;}
+    public long InvalidStamps {get;private set;}
     public int AheadMs {get{lock(labels)return consumed<0?0:(int)Math.Clamp((pendingAt-consumed)/48,0,2000);}}
     public Timeline(){Reset();}
     public void Reset(){
-        lock(labels){Array.Fill(labels,-1L);pendingAt=consumed=-1;seen=missing=false;Gaps=Late=0;}
+        lock(labels){Array.Fill(labels,-1L);pendingAt=consumed=-1;seen=missing=false;Gaps=Late=InvalidStamps=0;}
     }
-    public void Push(long localUs,byte[] frame){
+    // Check wire input before it can advance pendingAt or enter either audio queue.
+    public bool AcceptFrame(long sourceUs,long offsetUs,long arrivalUs,byte[] frame){
+        if(sourceUs>=0 && (offsetUs<=0 || sourceUs<=long.MaxValue-offsetUs)){
+            long localUs=sourceUs+offsetUs;
+            if(localUs>=0 && localUs>=arrivalUs-2_000_000 && localUs<=arrivalUs+50_000){
+                Push(localUs,frame);
+                return true;
+            }
+        }
+        lock(labels)InvalidStamps++;
+        return false;
+    }
+    internal void Push(long localUs,byte[] frame){
         long start=localUs*48/1000;
         lock(labels){
             if(start<0||start<=pendingAt){Late++;return;}

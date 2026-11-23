@@ -9,7 +9,7 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 [![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-1c1f43?style=flat-square)](#平台支持)
 [![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-1c1f43?style=flat-square)](#音质延迟与带宽)
-[![Status](https://img.shields.io/badge/status-1.2%20release-4c43c1?style=flat-square)](#已知限制)
+[![Status](https://img.shields.io/badge/status-1.2.1%20release-4c43c1?style=flat-square)](#已知限制)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-8b3a3a?style=flat-square)](NOTICE.md)
 
 [快速开始](#快速开始) · [功能](#能做什么) · [工作原理](#工作原理) · [构建](#从源码构建) · [已知限制](#已知限制) · [English](README.en.md)
@@ -92,8 +92,8 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 ### 你需要
 
 - 两台以上设备接在**同一个** Wi-Fi / 有线局域网，且彼此能互相访问（访客 Wi-Fi、AP 隔离、企业网络常见地不行）。
-- Windows：解压整个 `SoundMesh-Windows-1.2.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` **留在同一目录**。
-- Android：安装 `SoundMesh-Android-1.2.apk`。
+- Windows：解压整个 `SoundMesh-Windows-1.2.1.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` **留在同一目录**。
+- Android：安装 `SoundMesh-Android-1.2.1.apk`。
 
 ### 三步连起来
 
@@ -218,9 +218,11 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## 测试与验证
 
-日志见 [docs/TEST-RESULTS-1.2.txt](docs/TEST-RESULTS-1.2.txt)。要点：
+日志见 [docs/TEST-RESULTS-1.2.1.txt](docs/TEST-RESULTS-1.2.1.txt)。要点：
 
-- **28 项 C# 检查通过**：预缓冲、PCM 有符号转换、积压上限、陈旧样本丢弃、欠载静音、逐路/总/发送增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
+- **1.2.1 的两个修复**：采集积压突然增大时，发送端时钟沿上一块继续前进（不再回退），接收端对校时后的时间做范围校验，早于接收时刻 2 秒或晚于 50 ms 的块按非法时间戳丢弃并计数。
+
+- **29 项 C# 检查通过**：预缓冲、PCM 有符号转换、积压上限、陈旧样本丢弃、欠载静音、逐路/总/发送增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
 - 新增的**发送侧音量**在 Java 与 C# 两侧都验证了：只影响出站信号，不改变远端混音；能把出站压到静音。
 - **同步与对齐**：两路来源在 100 / 150 / 200 ms 缓冲下，即使其中一路反复出现 80 ms 突发停顿，混音输出仍逐样本对齐；迟到片段被跳过且下一秒有效片段能恢复；重连会清掉旧时间轴。
 - **跨语言互通**：Android Java 编解码器 ↔ C# 发送端/接收端，分片流、断连检测、强制重连后混音设置与双向提议都保留。
@@ -262,7 +264,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 - 版本变化见 [CHANGELOG.md](CHANGELOG.md)，使用细节见 [docs/USAGE.md](docs/USAGE.md)。
 - 漏洞与安全问题请先私下联系作者，不要直接开公开 issue。
-- 提交前请确认 `./src/tests/run.ps1` 通过。
+- 提交前请确认 `./src/tests/run.ps1` 通过。源码包内含 `.github/workflows/audio-ci.yml`，把它加入仓库后，push 与 PR 会自动跑 Windows 构建、JVM 音频测试、C# 测试与跨语言协议检查。
 
 ## 作者
 

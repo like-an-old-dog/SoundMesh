@@ -6,7 +6,10 @@ final class Timeline {
         private long next;
         long stamp(long estimate){
             long error=estimate-next;
-            long at=next==0||Math.abs(error)>50000?estimate:next+Math.max(-100,Math.min(100,error));
+            // Keep advancing by the audio block length across a backward capture jump.
+            long at = next == 0 || error > 50000 ? estimate
+                    : error < -50000 ? next
+                    : next + Math.max(-100, Math.min(100,error));
             next=at+10000;return at;
         }
     }
@@ -26,12 +29,23 @@ final class Timeline {
     private final byte[] pending=new byte[1920];
     private long pendingAt,consumed;
     private boolean seen,missing;
-    volatile long gaps,late;
+    volatile long gaps,late,invalidStamps;
     Timeline(){reset();}
-    synchronized void reset(){Arrays.fill(labels,-1);pendingAt=consumed=-1;seen=missing=false;gaps=late=0;}
+    synchronized void reset(){Arrays.fill(labels,-1);pendingAt=consumed=-1;seen=missing=false;gaps=late=invalidStamps=0;}
     synchronized int aheadMs(){return consumed<0?0:(int)Math.max(0,Math.min(2000,(pendingAt-consumed)/48));}
     private int sample(int frame,int ch){
         int i=4*frame+2*ch;return (short)((pending[i]&255)|(pending[i+1]<<8));
+    }
+    synchronized boolean acceptFrame(long sourceUs,long offsetUs,long arrivalUs,byte[] frame){
+        if(sourceUs>=0 && (offsetUs<=0 || sourceUs<=Long.MAX_VALUE-offsetUs)){
+            long localUs=sourceUs+offsetUs;
+            if(localUs>=0 && localUs>=arrivalUs-2_000_000 && localUs<=arrivalUs+50_000){
+                push(localUs,frame);
+                return true;
+            }
+        }
+        invalidStamps++;
+        return false;
     }
     synchronized void push(long localUs,byte[] frame){
         long start=localUs*48/1000;

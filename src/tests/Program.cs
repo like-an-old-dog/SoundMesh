@@ -56,6 +56,31 @@ foreach(int delayMs in new[]{100,150,200}){
     timeline.Reset();timeline.Read((baseUs+20000)*48/1000,dest,960);
     Check(dest.All(x=>x==0),"reconnect clears old timeline audio");
 }
+{
+    long origin=10_000_000;
+    var clock=new FrameClock();
+    var timeline=new Timeline();
+    var output=new float[960];
+    for(int i=0;i<36;i++){
+        long arrival=origin+i*10_000L;
+        long estimate=i==0?arrival:arrival-290_000;
+        long stamp=clock.Stamp(estimate);
+        if(!timeline.AcceptFrame(stamp,0,arrival,Pcm((short)(1000+i))))throw new Exception("rejected after backlog");
+        if(i>0){
+            timeline.Read((arrival-10_000)*48/1000,output,960);
+            if(output.Any(x=>x!=(999+i)/32768f))throw new Exception("missing PCM after backlog jump");
+        }
+    }
+    Check(timeline.Late==0 && timeline.Gaps==0,"290 ms capture backlog jump: zero rejected blocks and continuous PCM");
+    clock=new FrameClock();clock.Stamp(origin);
+    Check(clock.Stamp(origin+9950)==origin+9950 && clock.Stamp(origin+200_000)==origin+200_000,"small negative trim and true forward discontinuity retained");
+    timeline.Reset();timeline.AcceptFrame(origin,0,origin,Pcm(2500));
+    foreach(var (wire,offset) in new (long,long)[]{(origin+60_000,0),(origin-2_010_000,0),(long.MaxValue,99),(-1,0)})
+        if(timeline.AcceptFrame(wire,offset,origin,Pcm(30000)))throw new Exception("invalid timestamp accepted");
+    timeline.AcceptFrame(origin+5000,5000,origin+10_000,Pcm(1000));
+    timeline.Read(origin*48/1000,output,960);
+    Check(timeline.InvalidStamps==4 && timeline.Late==0 && output.All(x=>x==2500/32768f),"invalid stamps isolated; buffered PCM survives and next good frame accepted");
+}
 var signedStereo=Pcm(-12000);
 for(int i=2;i<signedStereo.Length;i+=4){signedStereo[i]=0x60;signedStereo[i+1]=0x09;}
 AudioSender.ScalePcm(signedStereo,25);

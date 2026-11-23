@@ -1,0 +1,52 @@
+PASS Android outbound gain scales signed PCM
+PASS Android local send mute
+PASS Java buffer waits for pre-roll
+PASS Java PCM signed little-endian conversion
+PASS Java backlog stays bounded
+PASS Java discards stale samples
+PASS Java underrun is silence
+PASS Java rejects oversized handshake
+PASS Java rejects truncated frame
+PASS Android mixer gain, mute and master compose correctly
+PASS Android 66-source mixing stays within output range
+PASS Android master mute produces silence
+PASS Android 290 ms backlog: zero drops, continuous PCM; bad timestamps isolated; drift trim retained
+PASS Android 80 ms burst / aligned two-source mix at 100 ms
+PASS Android 80 ms burst / aligned two-source mix at 150 ms
+PASS Android 80 ms burst / aligned two-source mix at 200 ms
+PASS two sources remain sample-aligned through 80ms bursts at 100ms
+PASS two sources remain sample-aligned through 80ms bursts at 150ms
+PASS two sources remain sample-aligned through 80ms bursts at 200ms
+PASS late packet skipped and next valid slot recovered
+PASS reconnect clears old timeline audio
+PASS 290 ms capture backlog jump: zero rejected blocks and continuous PCM
+PASS small negative trim and true forward discontinuity retained
+PASS invalid stamps isolated; buffered PCM survives and next good frame accepted
+PASS local send gain adjusts both signed stereo channels
+PASS local send gain can silence outbound without altering the remote mixer
+PASS C# buffer waits for pre-roll
+PASS C# signed PCM conversion
+PASS C# backlog stays bounded
+PASS C# discards stale audio
+PASS C# underrun is silence
+PASS per-device gain, mute and master gain compose correctly
+PASS mixer respects output offset
+PASS 66-source mixing stays within output range
+PASS master mute produces silence
+PASS C# rejects oversized handshake
+PASS incorrect pairing is rejected
+Java test classes: C:\Users\ASUS\Documents\Codex\2026-11-18\ni\work\jvm121
+PASS Android Java codec connects to C# sender
+PASS C# fragmented stream -> Android Java codec
+PASS Android codec detects peer disconnect
+PASS Android JVM receives fragmented C# stream and detects EOF
+PASS Java fixture started
+PASS C# client receives Java PCM stream
+PASS C# client detects peer disconnect
+PASS Java sender accepts C# handshake
+PASS Java sender completed
+PASS forced reconnect preserves mix settings and duplex offer
+PASS stereo polarity survives reconnect without downmix
+RESULT: 29 C# checks passed
+1.2.1: equivalent local CI tests passed, including Java and C# frame clock -> receive validation -> playout. Windows self-contained publish and Android APK build passed. APK signing certificate matches 1.2.
+Scope: deterministic media samples, jitter and timestamp validation. Physical Wi-Fi/headphone performance was not measured. GitHub-hosted workflow execution is pending repository integration.

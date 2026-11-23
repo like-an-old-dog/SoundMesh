@@ -9,7 +9,7 @@ Windows · Android · iPhone (web preview) — one *Start fusion* both sends and
 [![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-1c1f43?style=flat-square)](#platform-support)
 [![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-1c1f43?style=flat-square)](#audio-latency-and-bandwidth)
-[![Status](https://img.shields.io/badge/status-1.2%20release-4c43c1?style=flat-square)](#known-limitations)
+[![Status](https://img.shields.io/badge/status-1.2.1%20release-4c43c1?style=flat-square)](#known-limitations)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-8b3a3a?style=flat-square)](NOTICE.md)
 
 [中文](README.md) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Build](#build-from-source)
@@ -91,8 +91,8 @@ Since 1.1 there is only one mode: **Start fusion sends this device's audio and r
 
 You need two or more devices on **one** LAN that can reach each other (guest Wi-Fi, AP isolation and enterprise networks usually cannot).
 
-**Windows**: unzip the whole `SoundMesh-Windows-1.2.zip`, run `Windows\SoundMesh.exe`, and keep `SoundMeshCapture.exe` **in the same folder**.
-**Android**: install `SoundMesh-Android-1.2.apk`.
+**Windows**: unzip the whole `SoundMesh-Windows-1.2.1.zip`, run `Windows\SoundMesh.exe`, and keep `SoundMeshCapture.exe` **in the same folder**.
+**Android**: install `SoundMesh-Android-1.2.1.apk`.
 
 1. **Press *Start fusion* on every device** (Android will ask for the audio-sharing permission).
 2. **Pair once**: pick the other device under *Nearby devices*, or scan its pairing QR code. One pairing covers both directions.
@@ -211,9 +211,11 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## Verification
 
-See [docs/TEST-RESULTS-1.2.txt](docs/TEST-RESULTS-1.2.txt). Highlights:
+See [docs/TEST-RESULTS-1.2.1.txt](docs/TEST-RESULTS-1.2.1.txt). Highlights:
 
-- **28 C# checks pass**, including the new outbound-gain checks: pre-roll, signed PCM conversion, bounded backlog, stale-sample discard, underrun silence, per-source/master/outbound gain composition, 66-source headroom, oversized-handshake and truncated-frame rejection, wrong-pairing rejection.
+- **Two 1.2.1 fixes**: when the capture backlog suddenly grows the sender clock now continues from the previous block instead of jumping backwards, and the receiver range-checks the corrected timestamp, dropping blocks older than two seconds or newer than 50 ms.
+
+- **29 C# checks pass**, including the new outbound-gain checks: pre-roll, signed PCM conversion, bounded backlog, stale-sample discard, underrun silence, per-source/master/outbound gain composition, 66-source headroom, oversized-handshake and truncated-frame rejection, wrong-pairing rejection.
 - **Cross-language interop** between the Android Java codec and the C# sender/receiver, including fragmented streams, disconnect detection, and mix settings surviving a forced reconnect.
 - **Android 12L emulator**: the signed APK installed over 1.0; a real drag on the system media card moved the mix from 80 to 37 and was reported through the media session; tapping opened the volume panel; a landscape compact layout hid the system seek bar.
 - **Windows**: the published x64 binary carries the multi-resolution icon; hotkey registration and `WM_HOTKEY` dispatch work, main and quick-mixer sliders stay in sync; process-excluding capture streamed 30 frames; WASAPI → local TCP receiver.
@@ -239,7 +241,7 @@ Older logs are kept in [docs/TEST-RESULTS-1.1.txt](docs/TEST-RESULTS-1.1.txt).
 
 ## Contributing
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and [docs/USAGE.md](docs/USAGE.md) for detailed operation. Please report security issues privately rather than in a public issue, and make sure `./src/tests/run.ps1` passes before opening a PR.
+See [CHANGELOG.md](CHANGELOG.md) for version history and [docs/USAGE.md](docs/USAGE.md) for detailed operation. Please report security issues privately rather than in a public issue, and make sure `./src/tests/run.ps1` passes before opening a PR. The source package ships `.github/workflows/audio-ci.yml`; once it is in the repository, every push and PR runs the Windows build, JVM audio tests, C# tests and the cross-language protocol check.
 
 ## Authors
 
