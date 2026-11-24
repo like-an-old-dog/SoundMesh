@@ -13,7 +13,7 @@
 <body>
   <header class="top">
     <div class="brand"><span class="brandmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>声汇</div>
-    <span class="edition" lang="en">SoundMesh</span>
+    <button id="guide-open" type="button" class="text-action">使用教程</button>
   </header>
   <main>
     <section class="console" aria-labelledby="listen-title">
@@ -36,6 +36,10 @@
     <p class="foot">耳机接至 iPhone，在系统控制中心选择声音输出。</p>
   </main>
 
+  <dialog id="guide-dialog" aria-labelledby="guide-title" style="width:min(94vw,720px)">
+    <form method="dialog" class="dialog-head"><h2 id="guide-title">使用教程</h2><button class="close" aria-label="返回混音台">×</button></form>
+    <iframe title="声汇详细使用教程" style="display:block;width:100%;height:68vh;border:0"></iframe>
+  </dialog>
   <dialog id="pair" aria-labelledby="pair-title">
     <form method="dialog" class="dialog-head"><h2 id="pair-title">添加声音来源</h2><button class="close" aria-label="关闭" value="cancel">×</button></form>
     <div class="dialog-inner">

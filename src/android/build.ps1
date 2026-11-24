@@ -17,7 +17,7 @@ $generated=Join-Path $BuildDirectory 'generated'
 New-Item -ItemType Directory -Force $generated | Out-Null
 & "$BuildTools\aapt2.exe" compile --dir "$PSScriptRoot\res" -o "$BuildDirectory\resources.zip"
 Check-Exit
-& "$BuildTools\aapt2.exe" link -o "$BuildDirectory\unsigned.apk" -I $AndroidJar --manifest "$PSScriptRoot\AndroidManifest.xml" --java $generated "$BuildDirectory\resources.zip"
+& "$BuildTools\aapt2.exe" link -o "$BuildDirectory\unsigned.apk" -I $AndroidJar --manifest "$PSScriptRoot\AndroidManifest.xml" --java $generated -A "$PSScriptRoot\..\help" "$BuildDirectory\resources.zip"
 Check-Exit
 $sources = Get-ChildItem (Join-Path $PSScriptRoot 'app') -Filter '*.java' | ForEach-Object FullName
 $sources += (Join-Path $generated 'app\soundmesh\audio\R.java')

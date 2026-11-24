@@ -55,7 +55,7 @@ sealed class IPhoneBridge : IAsyncDisposable {
             }
             await next(ctx);
         });
-        foreach(var (url,name,type) in new[]{("/","index.html","text/html"),("/styles.css","styles.css","text/css"),("/app.js","app.js","text/javascript"),("/audio.js","audio.js","text/javascript")}){
+        foreach(var (url,name,type) in new[]{("/","index.html","text/html"),("/guide.html","guide.html","text/html"),("/styles.css","styles.css","text/css"),("/app.js","app.js","text/javascript"),("/audio.js","audio.js","text/javascript")}){
             app.MapGet(url,()=>Results.Stream(typeof(IPhoneBridge).Assembly.GetManifestResourceStream("Web."+name)!,type+"; charset=utf-8"));
         }
         app.MapGet("/api/sources",()=>Results.Json(new{sources=sources.Select(s=>new{id=s.Key,name=s.Value.Name})}));

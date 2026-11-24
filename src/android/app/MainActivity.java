@@ -42,6 +42,9 @@ public final class MainActivity extends Activity {
         LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);root.addView(brand);
         ImageView mark=new ImageView(this);mark.setImageResource(R.mipmap.launcher);brand.addView(mark,dp(40),dp(40));
         TextView word=text("声汇",23,true);word.setPadding(dp(10),0,dp(8),0);brand.addView(word);brand.addView(text("SoundMesh",13,false));
+        View brandSpace=new View(this);brand.addView(brandSpace,new LinearLayout.LayoutParams(0,1,1));
+        Button guide=button("使用教程");brand.addView(guide,new LinearLayout.LayoutParams(-2,dp(44)));
+        guide.setOnClickListener(v->startActivity(new Intent(this,GuideActivity.class)));
         startCard=column();GradientDrawable border=round(0xff202440,22);startCard.setBackground(border);startCard.setClipToOutline(true);
         FrameLayout hero=new FrameLayout(this);startCard.addView(hero);ImageView wave=new ImageView(this);wave.setImageResource(R.drawable.session_wave);wave.setScaleType(ImageView.ScaleType.CENTER_CROP);
         hero.addView(wave,new FrameLayout.LayoutParams(-1,-1));LinearLayout content=column();content.setPadding(dp(20),dp(13),dp(20),dp(15));hero.addView(content);

@@ -88,3 +88,8 @@ el('pair-form').onsubmit=async e=>{
 };
 (async()=>{try{const {sources}=await api('sources');sources.forEach(add);el('play').disabled=el('add').disabled=false;el('hint').textContent='耳机连到 iPhone 后，点按开始监听。';state();}
 catch(e){el('hint').textContent=e.message;}})();
+el('guide-open').onclick=()=>{
+    const dialog=el('guide-dialog'),frame=dialog.querySelector('iframe');
+    if(!frame.hasAttribute('src'))frame.src='/guide.html#iphone';
+    dialog.showModal();
+};

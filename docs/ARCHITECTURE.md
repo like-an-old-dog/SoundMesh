@@ -191,7 +191,7 @@ Windows 端内置一个最小 Kestrel 应用：
 | 路由 | 说明 |
 | --- | --- |
 | `GET /` | 内嵌的 `index.html`（作为程序集资源嵌入，不是磁盘文件） |
-| `GET /styles.css` `/app.js` `/audio.js` | 静态资源 |
+| `GET /styles.css` `/app.js` `/audio.js` | 静态资源 |`r`n| `GET /guide.html` | 内嵌的三端共用使用教程（1.2.2） |
 | `GET /api/sources` | 当前可混音的来源列表（需 Bearer 令牌） |
 | `GET /api/discover` | 在电脑侧做一次局域网发现（需 Bearer 令牌） |
 | `POST /api/sources` | 添加一台设备：校验 IPv4 + 8 位数字配对码，并**先真实连一次**确认可用（需 Bearer 令牌） |
@@ -202,6 +202,7 @@ Windows 端内置一个最小 Kestrel 应用：
 - `/api/sources` 只接受**同链路**的 IPv4 地址（`OnLink` 检查），拒绝公网与其他网段；请求体上限 2048 字节。
 - 响应头固定 `Cache-Control: no-store`、`Referrer-Policy: no-referrer`、`X-Content-Type-Options: nosniff`。
 - 网页端用 Web Audio 播放，逐路增益与静音在浏览器内完成。
+- 三端共用的使用教程 `src/help/guide.html` 同时被编进程序集（`Web.guide.html`）并作为输出文件随 Windows 包发布，Windows 客户端从程序目录以 `UseShellExecute` 打开它，桥接则以 `/guide.html` 提供给网页。
 
 浏览器侧限制：局域网 HTTP（非安全上下文）下部分能力受限，Safari 的后台音频策略也可能挂起播放。真机尚未验证。
 

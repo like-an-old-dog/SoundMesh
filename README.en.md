@@ -9,7 +9,7 @@ Windows · Android · iPhone (web preview) — one *Start fusion* both sends and
 [![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-1c1f43?style=flat-square)](#platform-support)
 [![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-1c1f43?style=flat-square)](#audio-latency-and-bandwidth)
-[![Status](https://img.shields.io/badge/status-1.2.1%20release-4c43c1?style=flat-square)](#known-limitations)
+[![Status](https://img.shields.io/badge/status-1.2.2%20release-4c43c1?style=flat-square)](#known-limitations)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-8b3a3a?style=flat-square)](NOTICE.md)
 
 [中文](README.md) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Build](#build-from-source)
@@ -33,6 +33,7 @@ Since 1.1 there is only one mode: **Start fusion sends this device's audio and r
 - 📱 **System media card** — on Android, dragging the media progress bar in the notification shade *is* the remote mix volume; tapping it opens the full mixer panel.
 - 🕒 **Aligned multi-source playback** — channels are sampled against a shared timeline; a late stream only loses its own slice.
 - 🌐 **iPhone with nothing to install** — scan a QR code in Safari and listen.
+- 📖 **Built-in offline guide** — seven HTML chapters reachable from Windows, Android and the iPhone web page before a fusion starts.
 
 > No account, no cloud, no relay: audio frames travel directly between devices inside the LAN. Traffic is **plaintext** — use it on networks you trust.
 
@@ -91,8 +92,8 @@ Since 1.1 there is only one mode: **Start fusion sends this device's audio and r
 
 You need two or more devices on **one** LAN that can reach each other (guest Wi-Fi, AP isolation and enterprise networks usually cannot).
 
-**Windows**: unzip the whole `SoundMesh-Windows-1.2.1.zip`, run `Windows\SoundMesh.exe`, and keep `SoundMeshCapture.exe` **in the same folder**.
-**Android**: install `SoundMesh-Android-1.2.1.apk`.
+**Windows**: unzip the whole `SoundMesh-Windows-1.2.2.zip`, run `Windows\SoundMesh.exe`, and keep `SoundMeshCapture.exe` and `guide.html` **in the same folder**.
+**Android**: install `SoundMesh-Android-1.2.2.apk`.
 
 1. **Press *Start fusion* on every device** (Android will ask for the audio-sharing permission).
 2. **Pair once**: pick the other device under *Nearby devices*, or scan its pairing QR code. One pairing covers both directions.
@@ -211,9 +212,10 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## Verification
 
-See [docs/TEST-RESULTS-1.2.1.txt](docs/TEST-RESULTS-1.2.1.txt). Highlights:
+See [docs/TEST-RESULTS-1.2.2.txt](docs/TEST-RESULTS-1.2.2.txt). Highlights:
 
 - **Two 1.2.1 fixes**: when the capture backlog suddenly grows the sender clock now continues from the previous block instead of jumping backwards, and the receiver range-checks the corrected timestamp, dropping blocks older than two seconds or newer than 50 ms.
+- **The 1.2.2 guide**: the Windows ZIP and the APK ship the same seven-chapter offline HTML; the emulator verified opening it from home and returning, and a Chromium mobile viewport verified chapter navigation and returning to the mixer.
 
 - **29 C# checks pass**, including the new outbound-gain checks: pre-roll, signed PCM conversion, bounded backlog, stale-sample discard, underrun silence, per-source/master/outbound gain composition, 66-source headroom, oversized-handshake and truncated-frame rejection, wrong-pairing rejection.
 - **Cross-language interop** between the Android Java codec and the C# sender/receiver, including fragmented streams, disconnect detection, and mix settings surviving a forced reconnect.

@@ -9,7 +9,7 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 [![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-1c1f43?style=flat-square)](#平台支持)
 [![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-1c1f43?style=flat-square)](#音质延迟与带宽)
-[![Status](https://img.shields.io/badge/status-1.2.1%20release-4c43c1?style=flat-square)](#已知限制)
+[![Status](https://img.shields.io/badge/status-1.2.2%20release-4c43c1?style=flat-square)](#已知限制)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-8b3a3a?style=flat-square)](NOTICE.md)
 
 [快速开始](#快速开始) · [功能](#能做什么) · [工作原理](#工作原理) · [构建](#从源码构建) · [已知限制](#已知限制) · [English](README.en.md)
@@ -33,6 +33,7 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 - 📱 **系统媒体卡片联动**——Android 下拉通知栏拖动媒体进度条就是远端混音总音量，轻点展开完整调音面板。
 - 🕒 **多路对齐播放**——各远端通道按统一时间轴取样，单路迟到只丢它自己的一段，不拖累其他通道。
 - 🌐 **iPhone 免安装试听**——Safari 扫码即听，无需 IPA、无需开发者签名。
+- 📖 **内置离线教程**——Windows、安卓与 iPhone 网页都有入口，7 章 HTML，开始融合之前就能打开。
 
 > 没有账号、没有云端、没有中转服务器：音频帧只在局域网内从发送端直连到接收端。链路是**明文**的，请只在可信网络使用。
 
@@ -92,8 +93,8 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 ### 你需要
 
 - 两台以上设备接在**同一个** Wi-Fi / 有线局域网，且彼此能互相访问（访客 Wi-Fi、AP 隔离、企业网络常见地不行）。
-- Windows：解压整个 `SoundMesh-Windows-1.2.1.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` **留在同一目录**。
-- Android：安装 `SoundMesh-Android-1.2.1.apk`。
+- Windows：解压整个 `SoundMesh-Windows-1.2.2.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` 与 `guide.html` **留在同一目录**。
+- Android：安装 `SoundMesh-Android-1.2.2.apk`。
 
 ### 三步连起来
 
@@ -218,9 +219,10 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## 测试与验证
 
-日志见 [docs/TEST-RESULTS-1.2.1.txt](docs/TEST-RESULTS-1.2.1.txt)。要点：
+日志见 [docs/TEST-RESULTS-1.2.2.txt](docs/TEST-RESULTS-1.2.2.txt)。要点：
 
 - **1.2.1 的两个修复**：采集积压突然增大时，发送端时钟沿上一块继续前进（不再回退），接收端对校时后的时间做范围校验，早于接收时刻 2 秒或晚于 50 ms 的块按非法时间戳丢弃并计数。
+- **1.2.2 的教程**：Windows ZIP 与 APK 内嵌同一份七章离线 HTML；模拟器验证「首页打开教程 → 返回首页」，Chromium 移动视口验证网页教程的章节导航与返回混音台。
 
 - **29 项 C# 检查通过**：预缓冲、PCM 有符号转换、积压上限、陈旧样本丢弃、欠载静音、逐路/总/发送增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
 - 新增的**发送侧音量**在 Java 与 C# 两侧都验证了：只影响出站信号，不改变远端混音；能把出站压到静音。

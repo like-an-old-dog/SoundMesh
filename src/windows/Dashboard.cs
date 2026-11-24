@@ -17,6 +17,15 @@ sealed partial class MainForm {
         var header=new FlowLayoutPanel{Dock=DockStyle.Top,Height=66,BackColor=Color.White,Padding=new(22,10,0,0),WrapContents=false};
         header.Controls.Add(new PictureBox{Image=Graphic("Mark"),SizeMode=PictureBoxSizeMode.Zoom,Size=new(38,38),Margin=new(0,3,6,0)});
         header.Controls.Add(Caption("声汇",18,true));var word=Caption("SoundMesh",11);word.ForeColor=Color.FromArgb(92,98,123);word.Margin=new(0,12,32,0);header.Controls.Add(word);
+        var guide=Btn("使用教程");
+        guide.Click+=(_,_)=>{
+            try{
+                string path=Path.Combine(AppContext.BaseDirectory,"guide.html");
+                if(!File.Exists(path))throw new FileNotFoundException("请完整解压 Windows 程序包。");
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true});
+            }catch(Exception e){MessageBox.Show(this,e.Message,"打开使用教程");}
+        };
+        header.Controls.Add(guide);
         return header;
     }
     void BuildSessionHero(){

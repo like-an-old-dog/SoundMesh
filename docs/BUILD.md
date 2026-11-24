@@ -88,7 +88,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 - 换一个构建目录 = 换一把新密钥 = **无法覆盖安装**已签名的版本，必须先卸载。
 - 想长期分发，请把 `prototype.jks` 换成你自己的密钥库，并妥善保存。
 
-`AndroidManifest.xml` 里的 `versionCode` / `versionName` 需要手动改：当前为 `7` / `1.2.1`。
+`AndroidManifest.xml` 里的 `versionCode` / `versionName` 需要手动改：当前为 `8` / `1.2.2`。
 
 ---
 
@@ -107,6 +107,8 @@ open SoundMesh.xcodeproj
 在 Xcode 里为**两个 target**（`Phone` 与 `Broadcast`）选择同一个 Team，确认 App Groups 能力，然后编译运行。测试分发走团队的 TestFlight。
 
 细节见 [src/ios/README.md](../src/ios/README.md)。
+
+**使用教程**：`src/help/guide.html` 被 `SoundMesh.csproj` 同时作为 `Content`（复制到输出目录，`ExcludeFromSingleFile`）与 `EmbeddedResource`（`Web.guide.html`）处理——前者供 Windows 端直接打开，后者供局域网桥接。安卓侧由 `GuideActivity` 读取随包资源，三端共用同一份 HTML。
 
 ---
 
@@ -152,15 +154,15 @@ Windows 客户端通过 `<ApplicationIcon>SoundMesh.ico</ApplicationIcon>` 与�
 
 ## 打包发布
 
-1.2.1 的发布产物是四个文件，均由上面的构建流程产生：
+1.2.2 的发布产物是四个文件，均由上面的构建流程产生：
 
 | 文件 | 来源 |
 | --- | --- |
-| `SoundMesh-Windows-1.2.1.zip` | `Windows/` 目录（两个 exe + `THIRD-PARTY/` + README）整包压缩 |
-| `SoundMesh-Android-1.2.1.apk` | `build.ps1` 输出，重命名 |
-| `SoundMesh-Source-1.2.zip` | `src/` + `THIRD-PARTY/` + 文档，不含构建产物 |
+| `SoundMesh-Windows-1.2.2.zip` | `Windows/` 目录（两个 exe + `THIRD-PARTY/` + README）整包压缩 |
+| `SoundMesh-Android-1.2.2.apk` | `build.ps1` 输出，重命名 |
+| `SoundMesh-Source-1.2.2.zip` | `src/` + `THIRD-PARTY/` + 文档，不含构建产物 |
 
-发布前请确认：`src/android/AndroidManifest.xml` 的版本号已更新、`docs/TEST-RESULTS-1.2.1.txt` 是最新一次验证的日志、SHA256 已重新计算。
+发布前请确认：`src/android/AndroidManifest.xml` 的版本号已更新、`docs/TEST-RESULTS-1.2.2.txt` 是最新一次验证的日志、SHA256 已重新计算。
 
 ---
 
