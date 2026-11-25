@@ -78,7 +78,9 @@ public sealed class AudioRing
 public sealed class RemoteAudio : IDisposable
 {
     public string Name { get; }
-    public string Address { get; }
+    public string Address { get; private set; }
+    public string? DeviceId {get;init;}
+    public Func<string,Task<string?>>? ResolveAddress {get;init;}
     public volatile float Gain = .65f, Level;
     public volatile bool Muted;
     public string Status { get; private set; } = "正在连接";
@@ -99,6 +101,7 @@ public sealed class RemoteAudio : IDisposable
     public volatile bool Timestamped;
     public readonly Timeline Timeline=new();
     long offsetUs;
+    public string Stage {get;private set;}="连接 TCP 49632";
     public string? ReverseCode {get;set;}
     public RemoteAudio(string name, string address, int port = Wire.Port) { Name = name; Address = address; this.port=port; }
 
@@ -122,16 +125,19 @@ public sealed class RemoteAudio : IDisposable
         {
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
             deadline.CancelAfter(6000);
+            Stage="连接 TCP 49632";
             await socket.ConnectAsync(Address, port, deadline.Token).ConfigureAwait(false);
             var stream = socket.GetStream();
+            Stage="配对握手";
             var request = (timed?"SOUNDMESH3 ":"SOUNDMESH2 ") + code + (ReverseCode == null ? "" : " " + ReverseCode);
             await Wire.WriteLine(stream, request, deadline.Token).ConfigureAwait(false);
             if(await Wire.Line(stream, deadline.Token).ConfigureAwait(false) != (timed?"OK TIME3":"OK 48000 2"))
                 throw new InvalidDataException("配对失败，请检查配对码并将两端升级到 0.2");
+            Stage="设备校时";
             if(timed)offsetUs=await SyncClock.Measure(stream,deadline.Token).ConfigureAwait(false);
             Timeline.Reset();Ring.Reset();Timestamped=timed;
             Status = timed?"已校时 · 立体声":"兼容模式 · 独立缓冲";
-            client = socket;
+            Stage="等待音频";client = socket;
             return socket;
         }
         catch { socket.Dispose(); throw; }
@@ -144,13 +150,16 @@ public sealed class RemoteAudio : IDisposable
         try {
             while (!stop.IsCancellationRequested) {
                 try {
+                    if(socket==null && delay>=4 && DeviceId!=null && ResolveAddress!=null){
+                        string? updated=await ResolveAddress(DeviceId);if(updated!=null)Address=updated;
+                    }
                     socket ??= await Open(code);
                     var stream = socket.GetStream();
                     using var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
                     using var connected=CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
                     if(Timestamped)_=RefreshOffset(code,connected.Token,socket);
                     try{while (!stop.IsCancellationRequested) {
-                        deadline.CancelAfter(15000);
+                        deadline.CancelAfter(30000);
                         if(Timestamped)await stream.ReadExactlyAsync(timestamp,deadline.Token);
                         await stream.ReadExactlyAsync(frame, deadline.Token);
                         if(Timestamped){
@@ -161,8 +170,8 @@ public sealed class RemoteAudio : IDisposable
                     }}finally{connected.Cancel();}
                 }
                 catch (InvalidDataException) { Status = "配对已变更，请移除并重新配对"; break; }
-                catch (Exception) when (!stop.IsCancellationRequested) {
-                    Status = "已断开 · " + delay + " 秒后自动重连";
+                catch (Exception error) when (!stop.IsCancellationRequested) {
+                    Status = "已断开 · "+Stage+" · "+NetFailure.Describe(error)+" · "+delay+" 秒后重连";
                 }
                 finally { socket?.Dispose(); socket = null; Level = 0; }
                 await Task.Delay(delay * 1000, stop.Token);
@@ -333,15 +342,17 @@ public sealed class AudioSender : IDisposable
                 foreach (var old in attempts.Where(x => x.Value.Count == 0 || (DateTime.UtcNow - x.Value.Last()).TotalMinutes > 1).Select(x => x.Key).ToArray()) attempts.Remove(old);
                 if (!attempts.TryGetValue(ip, out var times)) attempts[ip] = times = new();
                 while (times.Count > 0 && (DateTime.UtcNow - times.Peek()).TotalMinutes > 1) times.Dequeue();
-                if (times.Count >= 6) return;
+
                 // Only rejected authentication attempts count towards the limit.
             }
             var stream = client.GetStream();
             using var handshake = CancellationTokenSource.CreateLinkedTokenSource(stop.Token); handshake.CancelAfter(5000);
             var fields=(await Wire.Line(stream,handshake.Token)).Split(' ');
+            if(fields.Length==1 && fields[0]=="SM-DIAG1"){await Wire.WriteLine(stream,"SM-READY1",handshake.Token);return;}
             if(fields.Length==2 && fields[0]=="SM2-FOCUS" && fields[1]==Code && YieldRequested!=null){
                 YieldRequested(); await Wire.WriteLine(stream,"OK FOCUS",handshake.Token);return;
             }
+            lock(attempts)if(attempts.TryGetValue(ip,out var failures)&&failures.Count>=6)return;
             bool timed=fields[0]=="SOUNDMESH3";
             if(fields.Length==2 && fields[0]=="SM3-CLOCK" && fields[1]==Code){
                 await Wire.WriteLine(stream,"CLOCK",handshake.Token);await SyncClock.Respond(stream,handshake.Token);return;
@@ -353,7 +364,7 @@ public sealed class AudioSender : IDisposable
             await Wire.WriteLine(stream,timed?"OK TIME3":"OK 48000 2",handshake.Token);
             if(timed)await SyncClock.Respond(stream,handshake.Token);
             if(fields.Length==3 && fields[2].Length==8 && fields[2].All(char.IsAsciiDigit)) ReverseRequested?.Invoke(ip,fields[2]);
-            queue = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(timed?128:8) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true, SingleWriter = true });
+            queue = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(timed?32:8) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true, SingleWriter = true });
             lock (clients) clients.Add(queue);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
             await foreach (var frame in queue.Reader.ReadAllAsync(stop.Token))

@@ -173,10 +173,12 @@ public final class AudioService extends Service {
                 attempts.entrySet().removeIf(e->e.getValue().isEmpty()||now-e.getValue().peekLast()>60000);
                 ArrayDeque<Long> q=attempts.get(ip);if(q==null){q=new ArrayDeque<>();attempts.put(ip,q);}
                 while(!q.isEmpty()&&now-q.peekFirst()>60000)q.removeFirst();
-                if(q.size()>=6)return;
+                
             }
             InputStream in=socket.getInputStream();OutputStream out=socket.getOutputStream();
             String[] hello=Wire.line(in).split(" ");
+            if(hello.length==1&&hello[0].equals("SM-DIAG1")){Wire.send(out,"SM-READY1");return;}
+            synchronized(attempts){ArrayDeque<Long> q=attempts.get(ip);if(q!=null&&q.size()>=6)return;}
             if(hello.length==2&&hello[0].equals("SM2-FOCUS")&&hello[1].equals(code)){
                 monitor=false;out.write("OK FOCUS\n".getBytes("US-ASCII"));return;
             }
@@ -227,18 +229,25 @@ public final class AudioService extends Service {
         Remote r=new Remote(host,name==null||name.trim().isEmpty()?host:name.trim());
         r.ring.prebufferMs=prebufferMs>=100?70:prebufferMs;r.pin=pin;sources.add(r);
         workers.execute(()->{
-            int wait=1;boolean tryTimed=true;
+            int wait=1;boolean tryTimed=true;String address=host;
             while(running&&!r.removed) {
+                String stage="连接 TCP 49632";
                 try(Socket socket=new Socket()) {
                     r.socket=socket;
                     if(r.removed)break;
+                    if(wait>=4&&peer!=null){
+                        try{for(Lan.Peer candidate:lan.scan())if(peer.equals(candidate.id)){address=candidate.host;r.host=address;break;}}catch(Exception ignored){}
+                    }
+                    socket.setTcpNoDelay(true);socket.setKeepAlive(true);
+                    socket.connect(new InetSocketAddress(address,PORT),6000);
+                    stage="配对 / 校时";
                     if(tryTimed){
                         try {r.offsetUs=Wire.connectTimed(socket,host,pin,requestReverse?code:null);}
                         catch(ProtocolException old){tryTimed=false;continue;}
                     }else Wire.connect(socket,host,pin,requestReverse?code:null);
                     r.timed=tryTimed;
                     if(tryTimed)workers.execute(()->refreshClock(r,socket));
-                    r.timeline.reset();
+                    r.timeline.reset();stage="接收音频";
                     if(peer!=null)lan.prefs.edit().putString("peer."+peer,pin).apply();
                     r.ring.reset();r.status=r.timed?"已校时 · 立体声":"兼容模式 · 独立缓冲";byte[] frame=new byte[FRAME];
                     DataInputStream in=new DataInputStream(socket.getInputStream());
@@ -248,7 +257,7 @@ public final class AudioService extends Service {
                         r.ring.push(frame);wait=1;
                     }
                 }catch(ProtocolException e){r.status=e.getMessage();if(peer!=null)lan.prefs.edit().remove("peer."+peer).apply();break;}
-                catch(Exception e){if(!running||r.removed)break;r.status="连接中断 · "+wait+" 秒后重试";}
+                catch(Exception e){if(!running||r.removed)break;r.status=stage+"失败 · "+(e instanceof SocketTimeoutException?"超时":e instanceof EOFException?"对端关闭连接":String.valueOf(e.getMessage()))+" · "+wait+" 秒后重试";}
                 r.level=0;
                 try{Thread.sleep(wait*1000L);}catch(InterruptedException end){break;}
                 wait=Math.min(8,wait*2);
@@ -301,14 +310,14 @@ public final class AudioService extends Service {
     @Override public IBinder onBind(Intent intent){return null;}
     public static final class Remote extends MixBus.Input {
         volatile long offsetUs;
-        public final String host,name;private String pin;public volatile Socket socket; public volatile boolean removed;
+        public volatile String host;public final String name;private String pin;public volatile Socket socket; public volatile boolean removed;
         public volatile String status="连接中…";
         Remote(String host,String name){this.host=host;this.name=name;}
         void close(){removed=true;try{if(socket!=null)socket.close();}catch(Exception ignored){}}
     }
     private static final class Subscriber {
         final Socket socket;final ArrayBlockingQueue<byte[]> frames;volatile long blockedAt;
-        Subscriber(Socket socket,boolean timed){this.socket=socket;frames=new ArrayBlockingQueue<>(timed?128:8);}void close(){try{socket.close();}catch(Exception ignored){}}
+        Subscriber(Socket socket,boolean timed){this.socket=socket;frames=new ArrayBlockingQueue<>(timed?32:8);}void close(){try{socket.close();}catch(Exception ignored){}}
     }
 }
 

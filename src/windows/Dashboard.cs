@@ -25,7 +25,11 @@ sealed partial class MainForm {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true});
             }catch(Exception e){MessageBox.Show(this,e.Message,"打开使用教程");}
         };
-        header.Controls.Add(guide);
+        var more=Btn("工具 ▾");var menu=new ContextMenuStrip();
+        menu.Items.Add("检查环境",null,(_,_)=>{using var check=new EnvironmentCheck(channels.Select(c=>c.source.Address).Concat(nearby.Items.OfType<Peer>().Select(p=>p.Host)));check.ShowDialog(this);});
+        menu.Items.Add("检查更新",null,async(_,_)=>await CheckRelease(true));
+        more.Click+=(_,_)=>menu.Show(more,0,more.Height);
+        header.Controls.AddRange([guide,more]);
         return header;
     }
     void BuildSessionHero(){

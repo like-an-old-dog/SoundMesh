@@ -45,6 +45,14 @@ public final class MainActivity extends Activity {
         View brandSpace=new View(this);brand.addView(brandSpace,new LinearLayout.LayoutParams(0,1,1));
         Button guide=button("使用教程");brand.addView(guide,new LinearLayout.LayoutParams(-2,dp(44)));
         guide.setOnClickListener(v->startActivity(new Intent(this,GuideActivity.class)));
+        Button tools=button("工具");brand.addView(tools,new LinearLayout.LayoutParams(-2,dp(44)));
+        tools.setOnClickListener(v->{PopupMenu menu=new PopupMenu(this,tools);
+            menu.getMenu().add("检查环境").setOnMenuItemClickListener(item->{Intent intent=new Intent(this,EnvironmentCheck.class);
+                AudioService svc=AudioService.current;if(svc!=null&&!svc.sources.isEmpty())intent.putExtra("host",svc.sources.get(0).host);
+                startActivity(intent);return true;});
+            menu.getMenu().add("检查更新").setOnMenuItemClickListener(item->{updates.check(true);return true;});
+            menu.show();});
+        updates=new AppUpdates(this);updates.check(false);
         startCard=column();GradientDrawable border=round(0xff202440,22);startCard.setBackground(border);startCard.setClipToOutline(true);
         FrameLayout hero=new FrameLayout(this);startCard.addView(hero);ImageView wave=new ImageView(this);wave.setImageResource(R.drawable.session_wave);wave.setScaleType(ImageView.ScaleType.CENTER_CROP);
         hero.addView(wave,new FrameLayout.LayoutParams(-1,-1));LinearLayout content=column();content.setPadding(dp(20),dp(13),dp(20),dp(15));hero.addView(content);
@@ -70,6 +78,8 @@ public final class MainActivity extends Activity {
         buffer=button("播放缓冲 · 同步 150 ms");options.addView(buffer);buffer.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("播放缓冲").setItems(new String[]{"灵敏 · 25 ms","均衡 · 70 ms","稳定 · 90 ms","同步 · 100 ms","同步 · 150 ms","同步 · 200 ms"},(d,i)->{AudioService s=AudioService.current;if(s!=null){int ms=new int[]{25,70,90,100,150,200}[i];s.setBuffer(ms);buffer.setText("播放缓冲 · "+(ms>=100?"同步 ":"")+ms+" ms");}}).show());
         count=text("",12,false);mixCard.addView(count);list=column();mixCard.addView(list);
     }
+    private AppUpdates updates;
+    @Override public void onDestroy(){if(updates!=null)updates.close();super.onDestroy();}
     void authorize(){if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},101);else requestCapture();}
     void requestCapture(){startActivityForResult(getSystemService(MediaProjectionManager.class).createScreenCaptureIntent(),102);}
     void openScanner(){startActivityForResult(new Intent(this,ScanActivity.class),104);}
@@ -102,7 +112,7 @@ public final class MainActivity extends Activity {
     }catch(Exception e){toast(e.getMessage());}}
     @Override public void onRequestPermissionsResult(int req,String[] permissions,int[] grants){super.onRequestPermissionsResult(req,permissions,grants);if(grants.length==0||grants[0]!=0){toast("权限未授予");return;}if(req==101)requestCapture();if(req==103)openScanner();}
     @Override protected void onActivityResult(int req,int result,Intent data){
-        super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null)return;
+        super.onActivityResult(req,result,data);if(req==707){updates.afterPermission();return;}if(result!=RESULT_OK||data==null)return;
         if(req==102)startForegroundService(new Intent(this,AudioService.class).setAction("FUSE").putExtra("consent",data));
         if(req==104){String raw=data.getStringExtra("pair");String[] f=raw==null?new String[0]:raw.split("/");if(f.length==6&&f[5].matches("[a-fA-F0-9]{32}"))connect(f[3],f[4],f[3],f[5]);else toast("配对码无效");}
     }

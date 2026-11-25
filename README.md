@@ -9,7 +9,7 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 [![Release](https://img.shields.io/github/v/release/like-an-old-dog/SoundMesh?style=flat-square&label=release)](https://github.com/like-an-old-dog/SoundMesh/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android%2010%2B%20%C2%B7%20iOS%2016%2B-1c1f43?style=flat-square)](#平台支持)
 [![Audio](https://img.shields.io/badge/audio-48%20kHz%20%C2%B7%2016%20bit%20%C2%B7%20stereo-1c1f43?style=flat-square)](#音质延迟与带宽)
-[![Status](https://img.shields.io/badge/status-1.2.2%20release-4c43c1?style=flat-square)](#已知限制)
+[![Status](https://img.shields.io/badge/status-1.3.0%20release-4c43c1?style=flat-square)](#已知限制)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved-8b3a3a?style=flat-square)](NOTICE.md)
 
 [快速开始](#快速开始) · [功能](#能做什么) · [工作原理](#工作原理) · [构建](#从源码构建) · [已知限制](#已知限制) · [English](README.en.md)
@@ -34,6 +34,8 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 - 🕒 **多路对齐播放**——各远端通道按统一时间轴取样，单路迟到只丢它自己的一段，不拖累其他通道。
 - 🌐 **iPhone 免安装试听**——Safari 扫码即听，无需 IPA、无需开发者签名。
 - 📖 **内置离线教程**——Windows、安卓与 iPhone 网页都有入口，7 章 HTML，开始融合之前就能打开。
+- 🩺 **环境检测**——「工具 → 检查环境」对局域网对端做 20 次应用层探测，给出成功耗时、超时、P95 与波动范围，用来判断"是网络不通还是协议不对"。
+- 🔄 **应用内更新**——启动时自动查 GitHub 最新正式版，也可手动「工具 → 检查更新」；下载后校验 SHA-256、版本号与签名再安装，Windows 按用户目录并存新旧版本，安卓交给系统安装器。
 
 > 没有账号、没有云端、没有中转服务器：音频帧只在局域网内从发送端直连到接收端。链路是**明文**的，请只在可信网络使用。
 
@@ -93,8 +95,8 @@ Windows · Android · iPhone 网页试听 —— 一次「开始融合」同时�
 ### 你需要
 
 - 两台以上设备接在**同一个** Wi-Fi / 有线局域网，且彼此能互相访问（访客 Wi-Fi、AP 隔离、企业网络常见地不行）。
-- Windows：解压整个 `SoundMesh-Windows-1.2.2.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` 与 `guide.html` **留在同一目录**。
-- Android：安装 `SoundMesh-Android-1.2.2.apk`。
+- Windows：解压整个 `SoundMesh-Windows-1.3.0.zip`，运行 `Windows\SoundMesh.exe`，并让 `SoundMeshCapture.exe` 与 `guide.html` **留在同一目录**。
+- Android：安装 `SoundMesh-Android-1.3.0.apk`。
 
 ### 三步连起来
 
@@ -219,12 +221,14 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## 测试与验证
 
-日志见 [docs/TEST-RESULTS-1.2.2.txt](docs/TEST-RESULTS-1.2.2.txt)。要点：
+日志见 [docs/TEST-RESULTS-1.3.0.txt](docs/TEST-RESULTS-1.3.0.txt)。要点：
 
 - **1.2.1 的两个修复**：采集积压突然增大时，发送端时钟沿上一块继续前进（不再回退），接收端对校时后的时间做范围校验，早于接收时刻 2 秒或晚于 50 ms 的块按非法时间戳丢弃并计数。
 - **1.2.2 的教程**：Windows ZIP 与 APK 内嵌同一份七章离线 HTML；模拟器验证「首页打开教程 → 返回首页」，Chromium 移动视口验证网页教程的章节导航与返回混音台。
+- **1.3.0 的环境检测**：安卓模拟器作为应答端 20/20 成功，Windows 端探测 20/20，中位数 1 ms、P95 4 ms、波动 7 ms（模拟器网络）。
+- **1.3.0 的更新链路**：Windows 更新器解析线上 GitHub 最新版 v1.2.2 与发布摘要，拒绝被篡改的包，并正确暂存三个生产文件；安卓在受控 HTTPS 源上完成摘要／签名／版本校验，经私有只读内容提供器交给系统安装器，versionCode 9 → 10。
 
-- **29 项 C# 检查通过**：预缓冲、PCM 有符号转换、积压上限、陈旧样本丢弃、欠载静音、逐路/总/发送增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
+- **31 项 C# 检查通过**：预缓冲、PCM 有符号转换、积压上限、陈旧样本丢弃、欠载静音、逐路/总/发送增益组合、66 路混音不越界、总静音、超大握手与截断帧拒绝、错误配对拒绝。
 - 新增的**发送侧音量**在 Java 与 C# 两侧都验证了：只影响出站信号，不改变远端混音；能把出站压到静音。
 - **同步与对齐**：两路来源在 100 / 150 / 200 ms 缓冲下，即使其中一路反复出现 80 ms 突发停顿，混音输出仍逐样本对齐；迟到片段被跳过且下一秒有效片段能恢复；重连会清掉旧时间轴。
 - **跨语言互通**：Android Java 编解码器 ↔ C# 发送端/接收端，分片流、断连检测、强制重连后混音设置与双向提议都保留。
@@ -257,6 +261,8 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 - [ ] iOS 原生版：签名流程、TestFlight 分发、ReplayKit 采集验证
 - [ ] 三设备拓扑与蓝牙多点耳机接管的实机测试
 - [ ] 测量真实采集到耳机的端到端延迟，而不只是应用层补偿
+- [ ] 在已装旧版的设备上把「检查更新 → 下载 → 重开」的完整用户路径走通（目前只验证了各环节）
+- [ ] 校园网 / 手机热点下的探测数据现场复测
 - [ ] 可选的链路加密（仍然不依赖服务器）
 - [ ] 安装包体积优化（Windows 单文件自包含 ≈ 190 MB）
 
@@ -264,7 +270,7 @@ dotnet publish src/windows/SoundMesh.csproj -c Release -r win-x64 --self-contain
 
 ## 参与
 
-- 版本变化见 [CHANGELOG.md](CHANGELOG.md)，使用细节见 [docs/USAGE.md](docs/USAGE.md)。
+- 版本变化见 [CHANGELOG.md](CHANGELOG.md)，使用细节见 [docs/USAGE.md](docs/USAGE.md)，完整方案与使用手册见 [docs/MANUAL.md](docs/MANUAL.md)。
 - 漏洞与安全问题请先私下联系作者，不要直接开公开 issue。
 - 提交前请确认 `./src/tests/run.ps1` 通过。源码包内含 `.github/workflows/audio-ci.yml`，把它加入仓库后，push 与 PR 会自动跑 Windows 构建、JVM 音频测试、C# 测试与跨语言协议检查。
 

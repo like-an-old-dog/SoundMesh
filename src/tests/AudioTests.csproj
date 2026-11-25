@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
-  <ItemGroup><Compile Include="../windows/Timeline.cs" Link="Timeline.cs"/><Compile Include="../windows/AudioCore.cs" Link="AudioCore.cs"/><PackageReference Include="NAudio" Version="2.2.1"/></ItemGroup>
+  <ItemGroup><Compile Include="../windows/NetFailure.cs" Link="NetFailure.cs"/><Compile Include="../windows/Timeline.cs" Link="Timeline.cs"/><Compile Include="../windows/AudioCore.cs" Link="AudioCore.cs"/><PackageReference Include="NAudio" Version="2.2.1"/></ItemGroup>
 </Project>

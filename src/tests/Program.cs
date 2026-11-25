@@ -52,7 +52,7 @@ foreach(int delayMs in new[]{100,150,200}){
     timeline.Read(baseUs*48/1000,dest,960);timeline.Read(baseUs*48/1000+480,dest,960);
     timeline.Push(baseUs+20000,Pcm(3000));timeline.Push(baseUs+30000,Pcm(4000));
     timeline.Read((baseUs+20000)*48/1000,dest,960);
-    Check(timeline.Late==1&&timeline.Gaps==1&&dest.All(x=>x==3000/32768f),"late packet skipped and next valid slot recovered");
+    Check(timeline.Late==1&&timeline.Gaps==1&&dest.Skip(192).All(x=>x==3000/32768f) && dest[0]>0 && dest[0]<dest[192],"late packet skipped and next valid slot recovered");
     timeline.Reset();timeline.Read((baseUs+20000)*48/1000,dest,960);
     Check(dest.All(x=>x==0),"reconnect clears old timeline audio");
 }

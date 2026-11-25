@@ -51,13 +51,15 @@ public sealed class Timeline {
     readonly byte[] pending=new byte[Wire.FrameBytes];
     long pendingAt=-1,consumed=-1;
     bool seen,missing;
+    float lastLeft,lastRight;
+    int fadeOut,fadeIn;
     public long Gaps {get;private set;}
     public long Late {get;private set;}
     public long InvalidStamps {get;private set;}
     public int AheadMs {get{lock(labels)return consumed<0?0:(int)Math.Clamp((pendingAt-consumed)/48,0,2000);}}
     public Timeline(){Reset();}
     public void Reset(){
-        lock(labels){Array.Fill(labels,-1L);pendingAt=consumed=-1;seen=missing=false;Gaps=Late=InvalidStamps=0;}
+        lock(labels){Array.Fill(labels,-1L);pendingAt=consumed=-1;seen=missing=false;lastLeft=lastRight=0;fadeIn=fadeOut=0;Gaps=Late=InvalidStamps=0;}
     }
     // Check wire input before it can advance pendingAt or enter either audio queue.
     public bool AcceptFrame(long sourceUs,long offsetUs,long arrivalUs,byte[] frame){
@@ -79,7 +81,7 @@ public sealed class Timeline {
                 long distance=start-pendingAt;
                 // Adjacent capture blocks can run on a slightly different sampling clock.
                 // A larger jump is a real discontinuity and must retain its place in the mix.
-                int length=distance is >=400 and <=560?(int)distance:480;
+                int length=distance is >=470 and <=490?(int)distance:480;
                 if(pendingAt+length<=consumed)Late++;
                 else for(int i=0;i<length;i++){
                     long at=pendingAt+i;if(at<consumed)continue;
@@ -102,8 +104,16 @@ public sealed class Timeline {
             for(int i=0;i+1<count;i+=2){
                 long at=start+i/2;if(at<0)continue;
                 int cell=(int)(at%Capacity);
-                if(labels[cell]==at){output[i]=samples[cell*2];output[i+1]=samples[cell*2+1];seen=true;missing=false;}
-                else if(seen&&!missing){Gaps++;missing=true;}
+                if(labels[cell]==at){
+                    if(missing)fadeIn=96;
+                    float gain=fadeIn>0?(97-fadeIn--)/96f:1f;
+                    output[i]=lastLeft=samples[cell*2]*gain;
+                    output[i+1]=lastRight=samples[cell*2+1]*gain;
+                    seen=true;missing=false;
+                }else if(seen){
+                    if(!missing){Gaps++;missing=true;fadeOut=96;}
+                    if(fadeOut>0){float gain=--fadeOut/96f;output[i]=lastLeft*gain;output[i+1]=lastRight*gain;}
+                }
             }
             consumed=start+count/2;
         }

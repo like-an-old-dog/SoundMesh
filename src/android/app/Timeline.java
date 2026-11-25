@@ -29,9 +29,11 @@ final class Timeline {
     private final byte[] pending=new byte[1920];
     private long pendingAt,consumed;
     private boolean seen,missing;
+    private float lastLeft,lastRight;
+    private int fadeOut,fadeIn;
     volatile long gaps,late,invalidStamps;
     Timeline(){reset();}
-    synchronized void reset(){Arrays.fill(labels,-1);pendingAt=consumed=-1;seen=missing=false;gaps=late=invalidStamps=0;}
+    synchronized void reset(){Arrays.fill(labels,-1);pendingAt=consumed=-1;seen=missing=false;lastLeft=lastRight=0;fadeIn=fadeOut=0;gaps=late=invalidStamps=0;}
     synchronized int aheadMs(){return consumed<0?0:(int)Math.max(0,Math.min(2000,(pendingAt-consumed)/48));}
     private int sample(int frame,int ch){
         int i=4*frame+2*ch;return (short)((pending[i]&255)|(pending[i+1]<<8));
@@ -52,7 +54,7 @@ final class Timeline {
         if(start<0||start<=pendingAt){late++;return;}
         if(pendingAt>=0){
             long distance=start-pendingAt;
-            int length=distance>=400&&distance<=560?(int)distance:480;
+            int length=distance>=470&&distance<=490?(int)distance:480;
             if(pendingAt+length<=consumed)late++;
             else for(int i=0;i<length;i++){
                 long at=pendingAt+i;if(at<consumed)continue;
@@ -72,8 +74,16 @@ final class Timeline {
         for(int i=0;i+1<count;i+=2){
             long at=start+i/2;if(at<0)continue;
             int cell=(int)(at%CAPACITY);
-            if(labels[cell]==at){output[i]=samples[cell*2];output[i+1]=samples[cell*2+1];seen=true;missing=false;}
-            else if(seen&&!missing){gaps++;missing=true;}
+            if(labels[cell]==at){
+                    if(missing)fadeIn=96;
+                    float gain=fadeIn>0?(97-fadeIn--)/96f:1f;
+                    output[i]=lastLeft=samples[cell*2]*gain;
+                    output[i+1]=lastRight=samples[cell*2+1]*gain;
+                    seen=true;missing=false;
+                }else if(seen){
+                    if(!missing){gaps++;missing=true;fadeOut=96;}
+                    if(fadeOut>0){float gain=--fadeOut/96f;output[i]=lastLeft*gain;output[i+1]=lastRight*gain;}
+                }
         }
         consumed=start+count/2;
     }

@@ -230,3 +230,31 @@ Windows 端内置一个最小 Kestrel 应用：
 | 依赖外部服务 | 无 |
 
 **结论**：这是一个可信局域网内的工具。不要在公共 Wi-Fi、访客网络或任何可能被嗅探/中间人的链路上使用。加密链路在路线图上，但目前没有实现。
+
+---
+
+## 12. 环境检测与应用内更新
+
+### 12.1 环境检测
+
+两端各自对对方的局域网 IPv4 发起 20 次**应用层**探测（走 TCP 49632 的握手路径，不新开端口）。每次记录是否成功与耗时，汇总为中位数、P95、最大值与波动范围；双向各测一轮即可区分单向不通。
+
+它测的是"应用层能否在一秒内完成一次握手"，不是 ICMP、丢包率或吞吐。全部超时时优先怀疑防火墙与 AP 隔离，耗时抖动大则优先怀疑无线干扰。
+
+### 12.2 应用内更新
+
+| 步骤 | Windows | Android |
+| --- | --- | --- |
+| 发现 | `GET /repos/…/releases/latest`，跳过草稿与预发布，要求三段式版本号更大 | 同上 |
+| 取资产 | 精确匹配 `SoundMesh-Windows-<ver>.zip` | 精确匹配 `SoundMesh-Android-<ver>.apk` |
+| 校验 | 流式 SHA-256 比对资产摘要或 `SHA256SUMS.txt`，再核对 ZIP 内主程序文件版本 | SHA-256 + 包名 + versionName + 递增 versionCode + 签名证书 |
+| 安装 | 白名单三个文件（`Windows/SoundMesh.exe`、`Windows/SoundMeshCapture.exe`、`Windows/guide.html`）解压到 `%LOCALAPPDATA%/SoundMesh/versions/` 新目录，以新版重开 | 私有只读 `ContentProvider` 把 APK 交给系统安装器 |
+
+- 客户端只认**正式 Release**（`prerelease=false`、非草稿），所以"只推代码不发 Release"不会触发任何用户升级。
+- API 限流时退回读取同一 Release 的 `SHA256SUMS.txt`；文件缺失、摘要不符、版本不符都直接中止安装。
+- 发布流程（标签、四个附件的精确命名、校验清单格式）见 [RELEASING.md](../RELEASING.md)，客户端的解析逻辑与它一一对应。
+
+### 12.3 1.3.0 的两处链路调整
+
+- **发送积压限制**：时间戳方向限制发送端的积压深度，减少"发出去的其实是几百毫秒前的音频"。
+- **重试期重新发现 IP**：按设备标识配对的通道在重连时会重新发现对端地址，不再依赖首次配对时的 IP。

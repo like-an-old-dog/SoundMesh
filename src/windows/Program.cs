@@ -8,7 +8,7 @@ using ZXing.QrCode;
 
 namespace SoundMesh;
 static class Program {
-    [STAThread] static void Main() { ApplicationConfiguration.Initialize(); Application.Run(new MainForm()); }
+    [STAThread] static void Main(string[] args) { if(args.Length==2 && args[0]=="--finish-update" && int.TryParse(args[1],out int pid)){try{using var parent=System.Diagnostics.Process.GetProcessById(pid);parent.WaitForExit(15000);}catch(ArgumentException){}} ApplicationConfiguration.Initialize(); if(!ReleaseUpdate.Forward())Application.Run(new MainForm()); }
 }
 
 sealed partial class MainForm : Form {
@@ -33,6 +33,8 @@ sealed partial class MainForm : Form {
     IPhoneBridge? iphone;
     AudioSender? sender; NetworkMixer? mixer; CancellationTokenSource? advertising;
     bool scanning,closing; string advertiseIssue="";
+    readonly CancellationTokenSource lifetime=new();
+    bool checkingRelease,manualUpdateRequested;
     public MainForm() {
         Text="声汇  ·  SoundMesh";BackColor=Paper;ForeColor=Ink;Font=new Font("Microsoft YaHei UI",10);
         ClientSize=new Size(800,740);MinimumSize=new Size(660,530);
@@ -99,7 +101,7 @@ sealed partial class MainForm : Form {
         };
         ConfigureQuickMixer(header);
         InstallNavigation(mix);
-        Shown+=(_,_)=>UpdateSession();FormClosing+=(_,_)=>{closing=true;StopSession();timer.Stop();};timer.Start();
+        Shown+=async(_,_)=>{UpdateSession();await CheckRelease(false);};FormClosing+=(_,_)=>{closing=true;lifetime.Cancel();StopSession();timer.Stop();};timer.Start();
     }
     int SyncDelay=>profile.SelectedIndex switch{3=>100,4=>150,5=>200,_=>0};
     int BufferMs=>profile.SelectedIndex switch{0=>25,2=>90,_=>70};
@@ -150,13 +152,13 @@ sealed partial class MainForm : Form {
         var session=sender;
         if(!IPAddress.TryParse(ip,out var addr)||addr.AddressFamily!=AddressFamily.InterNetwork||IPAddress.IsLoopback(addr)||Lan.Routes().Any(r=>r.ip.Equals(addr))||!Regex.IsMatch(key,"^[0-9]{8}$")){Tell("请检查对端 IPv4 地址和 8 位配对码");return;}
         if(channels.Any(c=>c.source.Address==ip)||!pending.Add(ip))return;
-        var source=new RemoteAudio(name,ip){PreferTimestamps=true,ReverseCode=reverse?sender?.Code:null};
+        var source=new RemoteAudio(name,ip){PreferTimestamps=true,DeviceId=peerId,ResolveAddress=async id=>(await Lan.Scan()).FirstOrDefault(p=>p.Id==id)?.Host,ReverseCode=reverse?sender?.Code:null};
         source.Ring.PrebufferMs=BufferMs;
         try {
             await source.Start(key);if(closing||session!=sender){source.Dispose();return;}
             mixer??=new NetworkMixer();mixer.DelayMs=SyncDelay;SetGain();mixer.Add(source);AddStrip(source);
             if(peerId!=null)Lan.Save("peer."+peerId,key);status.Text="已连接 "+name;
-        }catch(Exception e){source.Dispose();if(e is InvalidDataException&&peerId!=null)Lan.Save("peer."+peerId,"");Tell("连接失败 "+e.Message+"。请确认在同一局域网，电脑防火墙允许声汇通过专用网络。");}
+        }catch(Exception e){source.Dispose();if(e is InvalidDataException&&peerId!=null)Lan.Save("peer."+peerId,"");Tell(source.Stage+"失败 · "+NetFailure.Describe(e)+"。请确认在同一局域网，电脑防火墙允许声汇通过专用网络。");}
         finally{pending.Remove(ip);}
     }
     void AddStrip(RemoteAudio source){
@@ -179,6 +181,16 @@ sealed partial class MainForm : Form {
         dialog.Controls.Add(new PictureBox{Dock=DockStyle.Fill,Image=bitmap,SizeMode=PictureBoxSizeMode.CenterImage});dialog.ShowDialog(this);
     }
     string AskPin(string name){using var f=new Form{Text="首次配对 · "+name,ClientSize=new(320,115),StartPosition=FormStartPosition.CenterParent};var box=Field("输入对端显示的 8 位配对码");box.Dock=DockStyle.Top;var ok=Btn("配对并记住");ok.Dock=DockStyle.Bottom;ok.DialogResult=DialogResult.OK;f.AcceptButton=ok;f.Controls.AddRange([box,ok]);return f.ShowDialog(this)==DialogResult.OK?box.Text.Trim():"";}
+    async Task CheckRelease(bool manual){
+        if(checkingRelease){manualUpdateRequested|=manual;return;}checkingRelease=true;manualUpdateRequested=manual;bool approved=false;
+        try{
+            var update=await ReleaseUpdate.Latest(lifetime.Token);
+            if(update.Version<=ReleaseUpdate.Current){if(manualUpdateRequested)MessageBox.Show(this,"已是最新版本 "+ReleaseUpdate.Current.ToString(3),"检查更新");return;}
+            if(MessageBox.Show(this,"发现 "+update.Version+"。下载成功后将结束融合并重新打开。","声汇更新",MessageBoxButtons.OKCancel)!=DialogResult.OK)return;
+            approved=true;string folder=await update.Stage(new Progress<int>(p=>Tell("正在下载更新 "+p+"%")),lifetime.Token);ReleaseUpdate.Activate(folder);Close();
+        }catch(Exception e){if(!closing&&(approved||manualUpdateRequested))MessageBox.Show(this,e.Message,"更新失败");}
+        finally{checkingRelease=false;}
+    }
     void Tell(string message){status.Text=message;}
     FlowLayoutPanel Card(string title){var box=Stack();box.BackColor=Color.White;box.Padding=new(20,14,20,14);box.Margin=new(0,0,0,12);box.MinimumSize=new(610,0);box.Controls.Add(Caption(title,17,true));body.Controls.Add(box);return box;}
     static FlowLayoutPanel Stack()=>new(){AutoSize=true,FlowDirection=FlowDirection.TopDown,WrapContents=false};

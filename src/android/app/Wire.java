@@ -16,7 +16,7 @@ public final class Wire {
     }
     public static void connect(Socket socket,String host,String pin,String reverse)throws IOException {
         socket.setTcpNoDelay(true);socket.setKeepAlive(true);
-        socket.connect(new InetSocketAddress(host,PORT),6000);socket.setSoTimeout(15000);
+        if(!socket.isConnected())socket.connect(new InetSocketAddress(host,PORT),6000);socket.setSoTimeout(30000);
         socket.getOutputStream().write(("SOUNDMESH2 "+pin+(reverse==null?"":" "+reverse)+"\n").getBytes("US-ASCII"));
         if(!line(socket.getInputStream()).equals("OK 48000 2"))throw new java.net.ProtocolException("配对码或版本不匹配，请重新配对");
     }
@@ -38,10 +38,10 @@ public final class Wire {
     }
     static long connectTimed(Socket socket,String host,String pin,String reverse)throws IOException{
         socket.setTcpNoDelay(true);socket.setKeepAlive(true);
-        socket.connect(new InetSocketAddress(host,PORT),6000);socket.setSoTimeout(6000);
+        if(!socket.isConnected())socket.connect(new InetSocketAddress(host,PORT),6000);socket.setSoTimeout(6000);
         send(socket.getOutputStream(),"SOUNDMESH3 "+pin+(reverse==null?"":" "+reverse));
         if(!line(socket.getInputStream()).equals("OK TIME3"))throw new ProtocolException("对端未启用时间戳协议");
-        long offset=measure(socket);socket.setSoTimeout(15000);return offset;
+        long offset=measure(socket);socket.setSoTimeout(30000);return offset;
     }
     public static void frame(InputStream in,byte[] frame)throws IOException {
         if(frame.length!=FRAME)throw new IOException("无效的音频帧大小");
